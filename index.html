@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Foxford generator</title>
+
+  <!-- библиотеки -->
+  <script src="https://cdn.jsdelivr.net/npm/p5@1.11.9/lib/p5.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/p5@1.11.9/lib/addons/p5.sound.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/opentype.js/1.3.4/opentype.min.js"></script>
+
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ЛЕВАЯ ПАНЕЛЬ -->
+  <aside id="ui" class="panel">
+    <div class="card">
+
+      <!-- Логотип -->
+      <div class="brand">
+        <img src="brand.svg" alt="Foxford generator" class="brand__svg"/>
+      </div>
+
+      <!-- Выберите эффект -->
+      <section class="section">
+        <p class="section__title">Выберите эффект</p>
+        <div id="effect-group" class="pills">
+          <button class="pill is-active" data-effect="Flag">Flag</button>
+          <button class="pill" data-effect="Arc">Arc</button>
+          <button class="pill" data-effect="Fish">Fish</button>
+          <button class="pill" data-effect="Sphere">Sphere</button>
+          <button class="pill" data-effect="Rise">Rise</button>
+        </div>
+      </section>
+
+      <!-- Сила искажения -->
+      <section class="section">
+        <p class="section__title">Сила искажения</p>
+        <div class="range-wrap">
+          <input id="distortion" type="range" min="-150" max="150" step="1" value="50"/>
+        </div>
+        <div id="distortion-hint" class="hint">—</div>
+      </section>
+
+      <!-- Настроить руками -->
+      <section class="section">
+        <p class="section__title">Настроить руками</p>
+        <label class="toggle">
+          <input id="manual-toggle" type="checkbox"/>
+          <div class="toggle__rail">
+            <div class="toggle__half toggle__half--off">OFF</div>
+            <div class="toggle__half toggle__half--on">ON</div>
+          </div>
+        </label>
+        <div id="manual-hint" class="hint">Drag: OFF / Orbit: OFF</div>
+      </section>
+
+      <!-- Введите текст -->
+      <section class="section">
+        <p class="section__title">Введите текст</p>
+        <div class="textarea">
+          <textarea id="text" rows="4">учёба
+затянула</textarea>
+        </div>
+      </section>
+
+      <!-- Настройки текста -->
+      <section class="section">
+        <p class="section__title">Настройки текста</p>
+
+        <div class="textbar">
+          <!-- Интерлиньяж (82×40, радиус 10) -->
+          <div class="textbar__group" id="leading-group">
+            <img id="leading-icon" src="inter.svg" alt="Интерлиньяж" class="textbar__icon" draggable="false"/>
+            <input
+              id="leading-edit"
+              class="textbar__number"
+              type="text"
+              value="120%"
+              inputmode="numeric"
+              autocomplete="off"
+              autocorrect="off"
+              spellcheck="false"
+              aria-label="Интерлиньяж, %"
+            />
+          </div>
+
+          <!-- Капс (56.5×40, радиус 10) -->
+          <button id="caps" class="textbar__btn" type="button">Tt</button>
+
+          <!-- Выключка (146.5×40, радиус 10) -->
+          <div id="align" class="align" data-value="center" aria-label="Выключка текста">
+            <div class="align__highlight"></div>
+            <button class="align__btn" type="button" data-align="left" aria-label="По левому краю">
+              <img src="left.svg" alt="" draggable="false"/>
+            </button>
+            <button class="align__btn" type="button" data-align="center" aria-label="По центру">
+              <img src="center.svg" alt="" draggable="false"/>
+            </button>
+            <button class="align__btn" type="button" data-align="right" aria-label="По правому краю">
+              <img src="right.svg" alt="" draggable="false"/>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- скрытые доп. контролы -->
+      <section id="distortion2-wrap" class="section hidden">
+        <p class="section__subtitle">Сила искажения 2</p>
+        <div class="range-wrap"><input id="distortion2" type="range" min="-150" max="150" step="1" value="-80"/></div>
+      </section>
+
+      <section id="size-wrap" class="section hidden">
+        <p class="section__subtitle">Размер эффекта</p>
+        <div class="range-wrap"><input id="effect-scale" type="range" min="0.5" max="3" step="0.01" value="1.0"/></div>
+      </section>
+
+      <div id="foot" class="foot">—</div>
+    </div>
+
+    <!-- ВНЕ карточки -->
+    <button id="export" class="cta cta--outside">Export SVG</button>
+  </aside>
+
+  <!-- p5-скетч -->
+  <script src="mySketch.js"></script>
+</body>
+</html>

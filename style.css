@@ -1,0 +1,189 @@
+/* === Circe Bold === */
+@font-face{
+    font-family: "Circe Bold";
+    src: local("Circe Bold"), url("./Circe-Bold.otf") format("opentype");
+    font-weight: 700; font-style: normal; font-display: swap;
+  }
+  
+  :root{
+    --panel-x: 32px;
+    --panel-y: 32px;
+    --panel-w: 365px;
+    --gap: 32px;
+    --cta-h: 60px;
+    --cta-gap: 12px;
+  }
+  
+  html, body{ height:100%; margin:0; }
+  body{
+    font-family:"Circe Bold",system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+    font-weight:700; font-size:20px; line-height:1; color:#000; background:#fff;
+    overflow:hidden;
+  }
+  button, input, textarea, select{ font:inherit; }
+  
+  /* панель и карточка со скроллом */
+  .panel{ position:fixed; left:var(--panel-x); top:var(--panel-y); width:var(--panel-w); z-index:10; }
+  .card{
+    backdrop-filter: blur(36px);
+    background: rgba(255,255,255,.46);
+    border-radius: 20px;
+    padding: 32px;
+    box-shadow: 0 0 0 1px rgba(0,0,0,.06) inset;
+    max-height: calc(100vh - var(--panel-y)*2 - var(--cta-h) - var(--cta-gap));
+    overflow: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0,0,0,.12) transparent;
+  }
+  .card::-webkit-scrollbar{ width:6px; }
+  .card::-webkit-scrollbar-thumb{ background:rgba(0,0,0,.12); border-radius:6px; }
+  .card:hover::-webkit-scrollbar-thumb{ background:rgba(0,0,0,.2); }
+  
+  /* бренд */
+  .brand{ position:relative; height:140px; margin-bottom:32px; }
+  .brand__svg{ position:absolute; inset:0; width:100%; height:100%; object-fit:contain; }
+  
+  /* секции и заголовки */
+  .section{ margin-bottom:32px; }
+  .section:last-child{ margin-bottom:0; }
+  .section__title{ margin:0 0 24px; }
+  .section__subtitle{ font-size:18px; margin:0 0 12px; }
+  
+  /* эффекты */
+  .pills{ display:flex; flex-wrap:wrap; gap:8px; }
+  .pill{ border:0; border-radius:40px; padding:10px 30px; background:rgba(0,0,0,.06); cursor:pointer; }
+  .pill.is-active{ background:#000; color:#fff; }
+  
+  /* ===== Кастомный слайдер-капсула (40px) ===== */
+  .range-wrap{
+    position:relative; height:40px; border-radius:20px;
+    background:#efefef; overflow:hidden; --range-fill:50%;
+  }
+  .range-wrap::before{
+    content:""; position:absolute; inset:0 auto 0 0;
+    width:var(--range-fill); background:#000; border-radius:inherit;
+    transition:width .12s linear;
+  }
+  .range-wrap.range-wrap--dragging::before{ transition:none; }
+  .range-wrap > input[type=range]{
+    position:absolute; inset:0; -webkit-appearance:none; appearance:none;
+    background:transparent; outline:none; border:0; margin:0; cursor:pointer;
+  }
+  .range-wrap > input[type=range]::-webkit-slider-runnable-track{ height:0; background:transparent; }
+  .range-wrap > input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:0; height:0; background:transparent; border:0; }
+  .range-wrap > input[type=range]::-moz-range-track{ height:0; background:transparent; border:0; }
+  .range-wrap > input[type=range]::-moz-range-thumb{ width:0; height:0; border:0; background:transparent; }
+  .range-wrap > input[type=range]::-ms-track{ height:0; background:transparent; border:0; color:transparent; }
+  
+  /* ===== Тумблер OFF/ON (40px) ===== */
+  .toggle{ position:relative; display:block; width:100%; height:40px; }
+  .toggle input{ position:absolute; inset:0; opacity:0; z-index:3; cursor:pointer; }
+  .toggle__rail{ position:absolute; inset:0; background:#efefef; border-radius:999px; overflow:hidden; }
+  .toggle__rail::before{
+    content:""; position:absolute; top:0; left:0; width:50%; height:100%;
+    background:#000; border-radius:inherit; transform:translateX(0%);
+    transition:transform .18s ease; z-index:1;
+  }
+  .toggle input:checked + .toggle__rail::before{ transform:translateX(100%); }
+  .toggle__half{ position:absolute; top:0; width:50%; height:100%;
+    display:flex; align-items:center; justify-content:center; z-index:2; user-select:none; pointer-events:none; }
+  .toggle__half--off{ left:0;  color:#fff; }
+  .toggle__half--on { right:0; color:rgba(0,0,0,.35); }
+  .toggle input:checked + .toggle__rail .toggle__half--off{ color:rgba(0,0,0,.35); }
+  .toggle input:checked + .toggle__rail .toggle__half--on { color:#fff; }
+  
+  /* textarea */
+  .textarea{ background:rgba(0,0,0,.06); border-radius:10px; padding:10px; }
+  .textarea textarea{ width:100%; background:transparent; border:0; outline:none; resize:vertical; font-size:20px; }
+  
+  /* === Нижняя панель (все элементы 40px, gap 8, радиус 10) === */
+  .textbar{ display:flex; gap:8px; align-items:center; }
+  
+  /* Интерлиньяж — ровно 82×40 */
+  .textbar__group{
+    display:flex; gap:8px; align-items:center;
+    background:rgba(0,0,0,.06);
+    border-radius:10px;
+    height:40px;                 /* фикс высоты всей капсулы */
+    padding:0 12px;              /* убрали вертикальные отступы */
+    box-sizing:border-box;       /* чтобы padding входил в 40 */
+  }
+  #leading-group{ width:82px; }  /* 82 по ширине — как просила */
+  
+  .textbar__icon{
+    width:14px; height:14px; opacity:.5;
+    user-select:none; -webkit-user-drag:none; user-drag:none;
+    cursor:ns-resize; touch-action:none;
+  }
+  
+  /* цифры 100% — узкий инпут без рамок */
+  #leading-group .textbar__number{
+    width:36px;
+    font-size:14px;
+    line-height:1;
+  
+    padding:0;
+    margin:0;
+  
+    background:transparent !important;
+    border:0 !important;
+    box-shadow:none !important;
+    outline:none !important;
+  
+    -webkit-appearance:none;
+    appearance:none;
+  
+    border-radius:0;
+    color:#000;
+    caret-color:#000;
+  }
+  #leading-group .textbar__number:focus{
+    outline:none;
+    box-shadow:none;
+  }
+  
+  /* Капс (как раньше — 56.5×40) */
+  #caps{
+    width:56.5px; height:40px; border-radius:10px;
+    display:flex; align-items:center; justify-content:center;
+    background:rgba(0,0,0,.06); color:#000; border:0; outline:none; font-size:14px;
+  }
+  #caps.btn--active{ background:#000; color:#fff; }
+  #caps:focus{ outline:none; }
+  
+  /* Выключка (3-позиционный переключатель) */
+  .align{
+    position:relative; width:146.5px; height:40px; border-radius:10px;
+    background:#efefef; display:grid; grid-template-columns:repeat(3,1fr);
+  }
+  .align__highlight{
+    position:absolute; top:0; left:0; width:calc(100%/3); height:100%;
+    background:#000; border-radius:10px; transition:transform .18s ease;
+  }
+  .align[data-value="left"]   .align__highlight{ transform:translateX(0%); }
+  .align[data-value="center"] .align__highlight{ transform:translateX(100%); }
+  .align[data-value="right"]  .align__highlight{ transform:translateX(200%); }
+  
+  .align__btn{ position:relative; z-index:1; display:flex; align-items:center; justify-content:center; border:0; background:transparent; cursor:pointer; }
+  .align__btn:focus{ outline:none; }
+  .align__btn img{ width:14px; height:14px; opacity:.45; pointer-events:none; user-select:none; -webkit-user-drag:none; user-drag:none; }
+  
+  .align[data-value="left"]   .align__btn[data-align="left"]   img,
+  .align[data-value="center"] .align__btn[data-align="center"] img,
+  .align[data-value="right"]  .align__btn[data-align="right"]  img{
+    opacity:1; filter:invert(1);
+  }
+  
+  /* CTA */
+  .cta{ display:block; width:var(--panel-w); height:var(--cta-h); background:#000; color:#fff; border:0; border-radius:20px; cursor:pointer; }
+  .cta--outside{ margin-top:var(--cta-gap); }
+  
+  /* хинты не показываем */
+  .hint{ display:none; }
+  .foot{ display:none; }
+  
+  /* канвас справа */
+  canvas{ position:fixed; left:calc(var(--panel-x) + var(--panel-w) + var(--gap)); top:0; }
+  
+  .hidden{ display:none; }
+  
