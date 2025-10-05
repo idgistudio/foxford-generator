@@ -1,4 +1,5 @@
 /* ====== ФОНТЫ/ПАРАМЕТРЫ ====== */
+let cnvEl;
 let font, otFont;
 
 let bend = 50, bend2 = -80, effectScale = 1.0;
@@ -32,15 +33,11 @@ function preload(){
   opentype.load('TT Foxford.ttf', (err, f)=>{ if(!err) otFont = f; });
 }
 function setup(){
-  setAttributes('antialias', true);
-  const cnv = createCanvas(windowWidth, windowHeight, WEBGL);
-  cnv.style('z-index','0');
-  cnv.style('position','fixed');
-  cnv.style('left','0px');  // канвас на весь экран
-  cnv.style('top','0');
+ setAttributes('antialias', true);
+  cnvEl = createCanvas(1, 1, WEBGL);        // создаём «крошку»
+  sizeCanvasToRight();                      // растягиваем в правую зону и ставим слева от неё
 
   textureMode(NORMAL); noStroke();
-
   bindUI();
   createTextTexture(getCurrentText());
   syncBendSlidersToLimits();
@@ -48,18 +45,64 @@ function setup(){
   toggleSizeSliderUI();
   updateBendLabel();
   updateRangeDecor(UI.r1);
-
-  fitPanelToViewport();   // <— вот это
+  fitPanelToViewport();                     // масштаб панели
 }
 function windowResized(){
-  resizeCanvas(windowWidth, windowHeight);
-  fitPanelToViewport();   // <— и здесь
+  sizeCanvasToRight();
+  fitPanelToViewport();
 }
 
 
 /* ====== UI ====== */
 const UI = {};
 const el = q => document.querySelector(q);
+
+// размеры правой области и позиция канваса
+function sizeCanvasToRight(){
+  const cs   = getComputedStyle(document.documentElement);
+  const panelX = parseInt(cs.getPropertyValue('--panel-x')) || 32;
+  const panelW = parseInt(cs.getPropertyValue('--panel-w')) || 365;
+  const gap    = parseInt(cs.getPropertyValue('--gap'))      || 32;
+
+  const left   = panelX + panelW + gap;              // где начинается правая область
+  const availW = Math.max(1, window.innerWidth - left);
+
+  cnvEl.style('position', 'fixed');
+  cnvEl.style('left', `${left}px`);
+  cnvEl.style('top',  `0`);
+
+  resizeCanvas(availW, window.innerHeight);          // теперь канвас = вся правая колонка
+}
+
+// масштабируем ТОЛЬКО содержимое карточки, чтобы паддинги 32px не «сжимались»
+function fitPanelToViewport(){
+  const aside = document.getElementById('ui');
+  const card  = aside?.querySelector('.card');
+  const inner = document.getElementById('card-inner'); // см. HTML ниже
+  const cta   = document.getElementById('export');
+  if(!aside || !card || !inner || !cta) return;
+
+  // сброс
+  inner.style.transform = 'none';
+
+  const rs   = getComputedStyle(document.documentElement);
+  const padY = parseInt(rs.getPropertyValue('--panel-y')) || 32;
+  const gapC = parseInt(rs.getPropertyValue('--cta-gap')) || 0;
+
+  // естественная высота без масштабирования
+  const naturalH = card.offsetHeight + cta.offsetHeight + gapC;
+  const availH   = window.innerHeight - padY*2;
+
+  const s = Math.min(1, availH / Math.max(1, naturalH));
+  inner.style.transformOrigin = 'top left';
+  inner.style.transform = `scale(${s})`;
+
+  // после масштабирования равняем отступы сверху/снизу
+  const totalH = card.getBoundingClientRect().height + cta.getBoundingClientRect().height + gapC;
+  const extra  = Math.max(0, (window.innerHeight - totalH)/2 - padY);
+  aside.style.top = `calc(var(--panel-y) + ${extra}px)`;
+}
+
 
 // ====== вверху файла рядом с helper'ами ======
 function fitPanelToViewport(){
