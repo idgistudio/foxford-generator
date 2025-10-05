@@ -26,7 +26,68 @@ let isCaps = false, orbitEnabled = false, dragEnabled = false;
 let isDraggingEffect = false, dragStartY = 0, bendStart = 0;
 let lastMouseX = 0, lastMouseY = 0, rotX = 0, rotY = 0;
 
-let uiScale = 1; // масштаб панели
+/* ====== helpers (css vars, панель/канвас) ====== */
+const css = {
+  getNum(name){
+    const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    return parseFloat(v || 0);
+  },
+  set(name, v){ document.documentElement.style.setProperty(name, String(v)); }
+};
+
+function setCanvasLeftByPanel(){
+  const panelX = css.getNum('--panel-x') || 32;
+  const panelW = css.getNum('--panel-w') || 365;
+  const gap    = css.getNum('--gap') || 32;
+  const s      = css.getNum('--panel-scale') || 1;
+  const cnv = document.querySelector('canvas');
+  if (cnv){
+    cnv.style.left = `${panelX + panelW * s + gap}px`;
+  }
+}
+
+/** Масштабируем левую панель так, чтобы между верхом/низом были одинаковые отступы, 
+ *  причём ширина визуально НЕ «прыгает» между эффектами.
+ *  Для расчёта высоты берём «максимальную» конфигурацию — с дополнительным слайдером. */
+function fitPanelToViewport(){
+  const panel = document.querySelector('.panel');
+  if (!panel) return;
+
+  // 1) временно убираем scale, чтобы измерить «натуральную» высоту
+  const prevTransform = panel.style.transform;
+  panel.style.transform = 'none';
+
+  // 2) показываем оба доп. слайдера "логически", но невидимо — чтобы замерить максимум
+  const ghostOn = (el)=>{
+    if (!el) return null;
+    const wasHidden = el.classList.contains('hidden');
+    if (wasHidden) el.classList.remove('hidden');
+    el.style.visibility = 'hidden';
+    el.style.display = 'block';
+    return ()=>{ el.style.visibility=''; el.style.display=''; if (wasHidden) el.classList.add('hidden'); };
+  };
+  const undo1 = ghostOn(document.querySelector('#distortion2-wrap'));
+  const undo2 = ghostOn(document.querySelector('#effect-scale-wrap'));
+
+  // 3) собственно замер
+  const naturalH = panel.getBoundingClientRect().height;
+
+  // 4) откаты временных правок
+  undo1 && undo1(); undo2 && undo2();
+  panel.style.transform = prevTransform;
+
+  // 5) считаем масштаб
+  const padY = css.getNum('--panel-y') || 32;
+  const avail = window.innerHeight - padY*2;
+  const s = Math.min(1, avail / naturalH);
+
+  panel.style.transformOrigin = 'top left';
+  panel.style.transform = `scale(${s})`;
+  css.set('--panel-scale', s);
+
+  // 6) обновляем позицию канваса
+  setCanvasLeftByPanel();
+}
 
 /* ====== preload / setup ====== */
 function preload(){
@@ -36,14 +97,9 @@ function preload(){
 function setup(){
   setAttributes('antialias', true);
   const cnv = createCanvas(windowWidth, windowHeight, WEBGL);
-  cnv.style('z-index','0'); cnv.style('position','fixed');
-
-  const cs = getComputedStyle(document.documentElement);
-  const panelX = parseInt(cs.getPropertyValue('--panel-x'))||32;
-  const panelW = parseInt(cs.getPropertyValue('--panel-w'))||365;
-  const gap    = parseInt(cs.getPropertyValue('--gap'))||32;
-  cnv.style('left', `${panelX + panelW + gap}px`);
-  cnv.style('top', '0');
+  cnv.style('z-index','0');
+  cnv.style('position','fixed');
+  cnv.style('top','0');
 
   textureMode(NORMAL); noStroke();
 
@@ -55,11 +111,13 @@ function setup(){
   updateBendLabel();
   updateRangeDecor(UI.r1);
 
-  relayoutUI();
+  // первой же отрисовкой выставим фон и геометрию
+  fitPanelToViewport();
+  setCanvasLeftByPanel();
 }
 function windowResized(){
   resizeCanvas(windowWidth, windowHeight);
-  relayoutUI();
+  fitPanelToViewport();
 }
 
 /* ====== UI ====== */
@@ -70,9 +128,9 @@ function bindUI(){
   UI.effectBtns = [...document.querySelectorAll('#effect-group .pill')];
   UI.r1   = el('#distortion');
   UI.r2   = el('#distortion2');
-  UI.r2w  = el('#distortion2-wrap');
+  UI.r2w  = el('#distortion2-wrap');     // теперь под заголовком "Сила искажения"
   UI.size = el('#effect-scale');
-  UI.sizew= el('#size-wrap');
+  UI.sizew= el('#effect-scale-wrap');     // тоже под тем же заголовком
 
   UI.text = el('#text');
   UI.caps = el('#caps');
@@ -87,8 +145,6 @@ function bindUI(){
 
   UI.manual = el('#manual-toggle');
   UI.exportBtn = el('#export');
-  UI.hint = el('#distortion-hint');
-  UI.foot = el('#foot');
 
   // эффекты
   UI.effectBtns.forEach(b=>{
@@ -103,7 +159,10 @@ function bindUI(){
       createTextTexture(getCurrentText());
       applyManualToggleBehavior();
       updateBendLabel(); updateRangeDecor(UI.r1);
-      relayoutUI();
+
+      // смена набора контролов не должна «подпрыгивать» ширину — масштаб не меняем,
+      // но позицию канваса обновим на всякий
+      setCanvasLeftByPanel();
     });
   });
 
@@ -115,9 +174,9 @@ function bindUI(){
   attachRangeDragBehavior(UI.r1);
   attachRangeDragBehavior(UI.r2);
 
-  // вторые диапазоны
-  UI.r2.addEventListener('input', ()=>{ bend2 = +UI.r2.value; updateBendLabel(); });
-  UI.size.addEventListener('input', ()=>{ effectScale = +UI.size.value; updateBendLabel(); });
+  // вторые диапазоны (под первым)
+  UI.r2?.addEventListener('input', ()=>{ bend2 = +UI.r2.value; updateBendLabel(); });
+  UI.size?.addEventListener('input', ()=>{ effectScale = +UI.size.value; updateBendLabel(); });
 
   // текст/капс
   UI.text.addEventListener('input', onTextInput);
@@ -126,9 +185,9 @@ function bindUI(){
     refreshCapsButton();
     createTextTexture(getCurrentText());
   });
-  refreshCapsButton();
+  refreshCapsButton(); // начальная надпись и заливка
 
-  // ==== Интерлиньяж: ввод и drag ====
+  // ==== Интерлиньяж: ввод и drag по иконке ====
   UI.leadingEdit.value = formatLeadingPct(lineHeightFactor);
   UI.leadingEdit.addEventListener('input', onLeadingEdit);
   UI.leadingEdit.addEventListener('blur',  ()=> UI.leadingEdit.value = formatLeadingPct(lineHeightFactor));
@@ -162,6 +221,9 @@ function bindUI(){
 
   // старт
   UI.r1.value = bend; UI.r2.value = bend2; UI.size.value = effectScale;
+
+  // пересчёт масштаба панели при первом рендере шрифтов/иконок
+  setTimeout(fitPanelToViewport, 0);
 }
 
 function refreshCapsButton(){
@@ -169,7 +231,7 @@ function refreshCapsButton(){
   UI.caps.classList.toggle('btn--active', isCaps);
 }
 
-/* ——— кастомный range: анти-лаг при драге ——— */
+/* ——— кастомный range: отключение анимации заполнения при drag ——— */
 function attachRangeDragBehavior(rangeEl){
   if (!rangeEl) return;
   const wrap = rangeEl.closest('.range-wrap'); if (!wrap) return;
@@ -191,8 +253,8 @@ function updateRangeDecor(rangeEl){
   wrap.style.setProperty('--range-fill', `${pct}%`);
 }
 
-/* ——— интерлиньяж ——— */
-const LEADING_MIN = 80, LEADING_MAX = 200;
+/* ——— интерлиньяж как в Фигме ——— */
+const LEADING_MIN = 80, LEADING_MAX = 200; // %, 0.8–2.0
 function clampLeading(p){ return Math.max(LEADING_MIN, Math.min(LEADING_MAX, p)); }
 function getLeadingPercent(){ return Math.round(lineHeightFactor * 100); }
 function formatLeadingPct(f){ return `${Math.round(f*100)}%`; }
@@ -219,37 +281,12 @@ function attachLeadingDrag(){
     if (!dragging) return;
     const dy = (e.clientY||0) - startY;
     const speed = (e.shiftKey ? 4 : 1);
-    const delta = Math.round(-dy / 4) * speed;
+    const delta = Math.round(-dy / 4) * speed;  // ~1% на 4px
     setLeadingPercent( clampLeading(startPct + delta) );
   });
   ['pointerup','pointercancel','blur'].forEach(ev=>{
     window.addEventListener(ev, ()=>{ dragging = false; document.body.style.userSelect = ''; }, { passive:true });
   });
-}
-
-/* ——— адаптивная панель + позиция канваса ——— */
-function relayoutUI(){
-  const aside = document.querySelector('.panel');
-  const card  = document.querySelector('.card');
-  const btn   = document.querySelector('#export');
-  if(!aside || !card || !btn) return;
-
-  const cs   = getComputedStyle(document.documentElement);
-  const padY = parseInt(cs.getPropertyValue('--panel-y')) || 32;
-
-  const total = card.offsetHeight + btn.offsetHeight;
-  const maxH  = window.innerHeight - padY*2;
-
-  uiScale = Math.min(1, maxH / total);
-  aside.style.transformOrigin = 'top left';
-  aside.style.transform = `scale(${uiScale})`;
-
-  const gap  = parseInt(cs.getPropertyValue('--gap')) || 32;
-  const rect = aside.getBoundingClientRect();
-  const cnv  = document.querySelector('canvas');
-  if (cnv){
-    cnv.style.left = `${Math.round(rect.left + rect.width + gap)}px`;
-  }
 }
 
 function applyManualToggleBehavior(){
@@ -268,11 +305,16 @@ function syncBendSlidersToLimits(){
   UI.r1.min = -limit1; UI.r1.max = limit1; bend = constrain(bend, -limit1, limit1); UI.r1.value = bend; updateRangeDecor(UI.r1);
 
   const limit2 = getCurrentLimit2();
-  UI.r2w.classList.toggle('hidden', !(limit2 > 0));
   if (limit2 > 0){ UI.r2.min = -limit2; UI.r2.max = limit2; bend2 = constrain(bend2, -limit2, limit2); UI.r2.value = bend2; }
 }
-function toggleSecondSliderUI(){ UI.r2w.classList.toggle('hidden', !(getCurrentLimit2() > 0)); relayoutUI(); }
-function toggleSizeSliderUI(){ UI.sizew.classList.toggle('hidden', currentMode !== 'Fish'); relayoutUI(); }
+function toggleSecondSliderUI(){ 
+  // показываем второй «силы искажения» только для Rise
+  UI.r2w?.classList.toggle('hidden', currentMode !== 'Rise'); 
+}
+function toggleSizeSliderUI(){ 
+  // показываем «Размер эффекта» только для Fish
+  UI.sizew?.classList.toggle('hidden', currentMode !== 'Fish'); 
+}
 
 function updateBendLabel(){
   const limit1 = getCurrentLimit();
@@ -312,7 +354,8 @@ function easeInOutCubic(x){ return x<0.5 ? 4*x*x*x : 1 - pow(-2*x+2,3)/2; }
 function startAnimation(){ if(!getCurrentText().trim()) return; createTextTexture(getCurrentText()); animationProgress=0; isAnimating=true; }
 
 function draw(){
-  background(240); // #f0f0f0
+  // фон страницы — #F0F0F0
+  background(240);
 
   if (!isSphereMode() && dragEnabled && isDraggingEffect){
     let dY=(mouseY-dragStartY)*0.5; bend=constrain(bendStart+dY,-getCurrentLimit(),getCurrentLimit());
@@ -324,12 +367,13 @@ function draw(){
   if (textImg && textImg.width>1){
     let display_w=textImg.width/scale, display_h=textImg.height/scale;
 
-    const cs=getComputedStyle(document.documentElement);
-    const panelX=parseInt(cs.getPropertyValue('--panel-x'))||32;
-    const panelW=parseInt(cs.getPropertyValue('--panel-w'))||365;
-    const gap=parseInt(cs.getPropertyValue('--gap'))||32;
-    const max_w=(windowWidth - (panelX+panelW+gap))*0.9;
+    const panelX=css.getNum('--panel-x')||32;
+    const panelW=css.getNum('--panel-w')||365;
+    const gap   =css.getNum('--gap')||32;
+    const s     =css.getNum('--panel-scale')||1;
+    const leftOffset = panelX + panelW*s + gap;
 
+    const max_w=(windowWidth - leftOffset) * 0.96; // чуть-чуть воздух
     let view_scale=1; if(display_w>max_w){ view_scale=max_w/display_w; display_w*=view_scale; display_h*=view_scale; }
 
     translate(-display_w/2, -display_h/2 - 50);
@@ -436,7 +480,12 @@ function exportDeformedSVG() {
   let display_w = textImg.width / scale;
   let display_h = textImg.height / scale;
 
-  const max_w = windowWidth * 0.9;   // центрируем относительно окна
+  const panelX = css.getNum('--panel-x') || 32;
+  const panelW = css.getNum('--panel-w') || 365;
+  const gap    = css.getNum('--gap') || 32;
+  const s      = css.getNum('--panel-scale') || 1;
+  const max_w = (windowWidth - (panelX + panelW*s + gap)) * 0.96;
+
   let view_scale = 1;
   if (display_w > max_w) {
     view_scale = max_w / display_w;
