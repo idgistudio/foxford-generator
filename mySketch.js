@@ -1,5 +1,4 @@
 /* ====== ФОНТЫ/ПАРАМЕТРЫ ====== */
-let cnvEl;
 let font, otFont;
 
 let bend = 50, bend2 = -80, effectScale = 1.0;
@@ -27,17 +26,22 @@ let isCaps = false, orbitEnabled = false, dragEnabled = false;
 let isDraggingEffect = false, dragStartY = 0, bendStart = 0;
 let lastMouseX = 0, lastMouseY = 0, rotX = 0, rotY = 0;
 
+let cnvEl; // ссылка на p5-канвас дом-элемент
+
 /* ====== preload / setup ====== */
 function preload(){
   font = loadFont('TT Foxford.ttf');
   opentype.load('TT Foxford.ttf', (err, f)=>{ if(!err) otFont = f; });
 }
 function setup(){
- setAttributes('antialias', true);
-  cnvEl = createCanvas(1, 1, WEBGL);        // создаём «крошку»
-  sizeCanvasToRight();                      // растягиваем в правую зону и ставим слева от неё
+  setAttributes('antialias', true);
+
+  // создаём, затем подгоняем размер под правую область
+  cnvEl = createCanvas(1, 1, WEBGL);
+  sizeCanvasToRight();
 
   textureMode(NORMAL); noStroke();
+
   bindUI();
   createTextTexture(getCurrentText());
   syncBendSlidersToLimits();
@@ -45,96 +49,17 @@ function setup(){
   toggleSizeSliderUI();
   updateBendLabel();
   updateRangeDecor(UI.r1);
-  fitPanelToViewport();                     // масштаб панели
+
+  fitPanelToViewport(); // масштаб панели под высоту
 }
 function windowResized(){
   sizeCanvasToRight();
   fitPanelToViewport();
 }
 
-
 /* ====== UI ====== */
 const UI = {};
 const el = q => document.querySelector(q);
-
-// размеры правой области и позиция канваса
-function sizeCanvasToRight(){
-  const cs   = getComputedStyle(document.documentElement);
-  const panelX = parseInt(cs.getPropertyValue('--panel-x')) || 32;
-  const panelW = parseInt(cs.getPropertyValue('--panel-w')) || 365;
-  const gap    = parseInt(cs.getPropertyValue('--gap'))      || 32;
-
-  const left   = panelX + panelW + gap;              // где начинается правая область
-  const availW = Math.max(1, window.innerWidth - left);
-
-  cnvEl.style('position', 'fixed');
-  cnvEl.style('left', `${left}px`);
-  cnvEl.style('top',  `0`);
-
-  resizeCanvas(availW, window.innerHeight);          // теперь канвас = вся правая колонка
-}
-
-// масштабируем ТОЛЬКО содержимое карточки, чтобы паддинги 32px не «сжимались»
-function fitPanelToViewport(){
-  const aside = document.getElementById('ui');
-  const card  = aside?.querySelector('.card');
-  const inner = document.getElementById('card-inner'); // см. HTML ниже
-  const cta   = document.getElementById('export');
-  if(!aside || !card || !inner || !cta) return;
-
-  // сброс
-  inner.style.transform = 'none';
-
-  const rs   = getComputedStyle(document.documentElement);
-  const padY = parseInt(rs.getPropertyValue('--panel-y')) || 32;
-  const gapC = parseInt(rs.getPropertyValue('--cta-gap')) || 0;
-
-  // естественная высота без масштабирования
-  const naturalH = card.offsetHeight + cta.offsetHeight + gapC;
-  const availH   = window.innerHeight - padY*2;
-
-  const s = Math.min(1, availH / Math.max(1, naturalH));
-  inner.style.transformOrigin = 'top left';
-  inner.style.transform = `scale(${s})`;
-
-  // после масштабирования равняем отступы сверху/снизу
-  const totalH = card.getBoundingClientRect().height + cta.getBoundingClientRect().height + gapC;
-  const extra  = Math.max(0, (window.innerHeight - totalH)/2 - padY);
-  aside.style.top = `calc(var(--panel-y) + ${extra}px)`;
-}
-
-
-// ====== вверху файла рядом с helper'ами ======
-function fitPanelToViewport(){
-  const root = document.getElementById('ui');
-  const card = root?.querySelector('.card');
-  const cta  = document.getElementById('export');
-  if (!root || !card || !cta) return;
-
-  // измеряем естественную высоту (без текущего scale)
-  root.style.transform = 'none';
-  const styles = getComputedStyle(document.documentElement);
-  const padY = parseInt(styles.getPropertyValue('--panel-y')) || 32;
-
-  const natural = card.offsetHeight + cta.offsetHeight + (parseInt(styles.getPropertyValue('--cta-gap'))||0);
-  const avail   = window.innerHeight - padY*2;
-
-  // если не влезает — уменьшаем пропорционально; иначе оставляем 1
-  const s = Math.min(1, avail / Math.max(1, natural));
-  root.style.transformOrigin = 'top left';
-  root.style.transform = `scale(${s})`;
-
-  // дополнительно центрируем вертикально между одинаковыми отступами
-  // (когда s=1 и места много — оставим как есть)
-  if (s < 1){
-    root.style.top = styles.getPropertyValue('--panel-y');
-  } else {
-    // равные отступы: сместим блок так, чтобы снизу было как сверху
-    const extra = (avail - natural) / 2;
-    root.style.top = `calc(var(--panel-y) + ${Math.max(0, extra)}px)`;
-  }
-}
-
 
 function bindUI(){
   UI.effectBtns = [...document.querySelectorAll('#effect-group .pill')];
@@ -195,9 +120,9 @@ function bindUI(){
     refreshCapsButton();
     createTextTexture(getCurrentText());
   });
-  refreshCapsButton(); // начальная надпись и заливка
+  refreshCapsButton();
 
-  // ==== Интерлиньяж: ввод и drag по иконке ====
+  // ==== Интерлиньяж ====
   UI.leadingEdit.value = formatLeadingPct(lineHeightFactor);
   UI.leadingEdit.addEventListener('input', onLeadingEdit);
   UI.leadingEdit.addEventListener('blur',  ()=> UI.leadingEdit.value = formatLeadingPct(lineHeightFactor));
@@ -332,6 +257,53 @@ function updateBendLabel(){
   console.log('[manual]', `Drag:${dragEnabled?'ON':'OFF'} / Orbit:${orbitEnabled?'ON':'OFF'}`);
 }
 
+/* ====== ХЕЛПЕРЫ ЛЭЙАУТА ====== */
+// размеры правой области и позиция канваса
+function sizeCanvasToRight(){
+  const cs   = getComputedStyle(document.documentElement);
+  const panelX = parseInt(cs.getPropertyValue('--panel-x')) || 32;
+  const panelW = parseInt(cs.getPropertyValue('--panel-w')) || 365;
+  const gap    = parseInt(cs.getPropertyValue('--gap'))      || 32;
+
+  const left   = panelX + panelW + gap;
+  const availW = Math.max(1, window.innerWidth - left);
+
+  cnvEl.style('position', 'fixed');
+  cnvEl.style('left', `${left}px`);
+  cnvEl.style('top',  `0`);
+
+  resizeCanvas(availW, window.innerHeight);
+}
+
+// масштабируем содержимое карточки под высоту вьюпорта
+function fitPanelToViewport(){
+  const aside = document.getElementById('ui');
+  const card  = aside?.querySelector('.card');
+  const inner = document.getElementById('card-inner');
+  const cta   = document.getElementById('export');
+  if(!aside || !card || !inner || !cta) return;
+
+  // сброс трансформа перед замером
+  inner.style.transform = 'none';
+
+  const rs   = getComputedStyle(document.documentElement);
+  const padY = parseInt(rs.getPropertyValue('--panel-y')) || 32;
+  const gapC = parseInt(rs.getPropertyValue('--cta-gap')) || 0;
+
+  // естественная высота без масштабирования
+  const naturalH = card.offsetHeight + cta.offsetHeight + gapC;
+  const availH   = window.innerHeight - padY*2;
+
+  const s = Math.min(1, availH / Math.max(1, naturalH));
+  inner.style.transformOrigin = 'top left';
+  inner.style.transform = `scale(${s})`;
+
+  // выравниваем вертикальные отступы
+  const totalH = card.getBoundingClientRect().height + cta.getBoundingClientRect().height + gapC;
+  const extra  = Math.max(0, (window.innerHeight - totalH)/2 - padY);
+  aside.style.top = `calc(var(--panel-y) + ${extra}px)`;
+}
+
 /* ====== РЕНДЕР ====== */
 function createTextTexture(str){
   let tsBase=150, ts=tsBase*scale, pad=ts*1, lines=str.split('\n'), maxTextureSize=16384;
@@ -356,45 +328,30 @@ function easeInOutCubic(x){ return x<0.5 ? 4*x*x*x : 1 - pow(-2*x+2,3)/2; }
 function startAnimation(){ if(!getCurrentText().trim()) return; createTextTexture(getCurrentText()); animationProgress=0; isAnimating=true; }
 
 function draw(){
-  background(240); 
+  background(240); // #F0F0F0 — едино и для GitHub Pages, и локально
 
   if (!isSphereMode() && dragEnabled && isDraggingEffect){
-    let dY=(mouseY-dragStartY)*0.5;
-    bend=constrain(bendStart+dY,-getCurrentLimit(),getCurrentLimit());
+    let dY=(mouseY-dragStartY)*0.5; bend=constrain(bendStart+dY,-getCurrentLimit(),getCurrentLimit());
     UI.r1.value=bend; updateRangeDecor(UI.r1); updateBendLabel();
   }
 
-  if (isAnimating){
-    animationProgress+=ANIMATION_SPEED;
-    if (animationProgress>=1.0){ animationProgress=1.0; isAnimating=false; }
-  }
+  if (isAnimating){ animationProgress+=ANIMATION_SPEED; if (animationProgress>=1.0){ animationProgress=1.0; isAnimating=false; } }
 
   if (textImg && textImg.width>1){
     let display_w=textImg.width/scale, display_h=textImg.height/scale;
 
-    // === живые метрики панели (с учётом scale) ===
-    const gap = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--gap')) || 32;
-    const asideRect = document.getElementById('ui')?.getBoundingClientRect();
-    const leftEdge  = (asideRect ? asideRect.right : 0) + gap; // правая кромка панели + зазор
-    const rightMargin = gap;
-    const availW = Math.max(0, windowWidth - leftEdge - rightMargin);
+    const cs=getComputedStyle(document.documentElement);
+    const panelX=parseInt(cs.getPropertyValue('--panel-x'))||32;
+    const panelW=parseInt(cs.getPropertyValue('--panel-w'))||365;
+    const gap=parseInt(cs.getPropertyValue('--gap'))||32;
+    const max_w=(windowWidth - (panelX+panelW+gap))*0.9;
 
-    // подгон ширины под доступную область справа
-    let view_scale=1;
-    if(display_w>availW){ view_scale=availW/display_w; display_w*=view_scale; display_h*=view_scale; }
+    let view_scale=1; if(display_w>max_w){ view_scale=max_w/display_w; display_w*=view_scale; display_h*=view_scale; }
 
-    // сдвигаем «мировой центр» в геометрический центр правой области
-    // (в WEBGL (0,0) — центр окна, поэтому нужен полусдвиг leftEdge/2)
-    translate(leftEdge/2, 0, 0);
-
-    // теперь аккуратно центрируем саму картинку
-    translate(-display_w/2, -display_h/2);
-
-    if(isSphereMode()) drawSphereMapped(display_w, display_h);
-    else               drawSheetDeform(display_w, display_h);
+    translate(-display_w/2, -display_h/2 - 50); // центр в правой области, немного вверх
+    if(isSphereMode()) drawSphereMapped(display_w, display_h); else drawSheetDeform(display_w, display_h);
   }
 }
-
 function isSphereMode(){ return currentMode==='Sphere'; }
 
 function drawSheetDeform(display_w, display_h){
