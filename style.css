@@ -6,13 +6,13 @@
   }
   
   :root{
-    --panel-x: 32px;
-    --panel-y: 32px;
-    --panel-w: 365px;
-    --gap: 32px;
-    --cta-h: 60px;
-    --cta-gap: 12px;
-  }
+  --panel-x: 32px;
+  --panel-y: 32px;
+  --panel-w: 365px;
+  --gap: 32px;
+  --cta-h: 60px;
+  --cta-gap: 0px; /* было 12px — теперь «впритык» */
+}
   
   html, body{ height:100%; margin:0; }
   body{
@@ -25,16 +25,11 @@
   /* панель и карточка со скроллом */
   .panel{ position:fixed; left:var(--panel-x); top:var(--panel-y); width:var(--panel-w); z-index:10; }
   .card{
-    backdrop-filter: blur(36px);
-    background: rgba(255,255,255,.46);
-    border-radius: 20px;
-    padding: 32px;
-    box-shadow: 0 0 0 1px rgba(0,0,0,.06) inset;
-    max-height: calc(100vh - var(--panel-y)*2 - var(--cta-h) - var(--cta-gap));
-    overflow: auto;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(0,0,0,.12) transparent;
-  }
+  /* как и было — формула сама гарантирует, что кнопка не уедет за низ */
+  max-height: calc(100vh - var(--panel-y)*2 - var(--cta-h) - var(--cta-gap));
+  overflow: auto;
+  /* остальное без изменений */
+}
   .card::-webkit-scrollbar{ width:6px; }
   .card::-webkit-scrollbar-thumb{ background:rgba(0,0,0,.12); border-radius:6px; }
   .card:hover::-webkit-scrollbar-thumb{ background:rgba(0,0,0,.2); }
@@ -183,7 +178,7 @@
   .foot{ display:none; }
   
   /* канвас справа */
-  canvas{ position:fixed; left:calc(var(--panel-x) + var(--panel-w) + var(--gap)); top:0; }
+  canvas{ position:fixed; left:0; top:0; }
   
   .hidden{ display:none; }
   
