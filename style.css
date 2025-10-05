@@ -8,37 +8,33 @@
 :root{
   --panel-x: 32px;
   --panel-y: 32px;
-  --panel-w: 365px;        /* стартовая оценка ширины (пересчитываем по факту в JS) */
+  --panel-w: 365px;
   --gap: 32px;
   --cta-h: 60px;
-  --cta-gap: 0px;          /* теперь кнопка без зазора с карточкой */
+  --cta-gap: 0px;   /* кнопка вплотную */
 }
 
 html, body{
-  height:100%; margin:0;
-  background:#f0f0f0;      /* общий серый фон */
+  height:100%; margin:0; background:#f0f0f0;
 }
 body{
   font-family:"Circe Bold",system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
   font-weight:700; font-size:20px; line-height:1; color:#000;
-  overflow:hidden;          /* скролл не нужен: всё масштабируем */
+  overflow:hidden;
 }
 button, input, textarea, select{ font:inherit; }
 
-/* панель и карточка */
+/* панель */
 .panel{
   position:fixed; left:var(--panel-x); top:var(--panel-y);
-  width:clamp(320px, 26vw, 380px);    /* «идеальная» ширина, но может сужаться/расти */
+  width:clamp(320px, 26vw, 380px);
   z-index:10;
 }
 .card{
-  background:#fff;          /* панель всегда белая */
-  border-radius: 20px;
-  padding: 32px;            /* внутренние поля 32 */
-  box-shadow: 0 0 0 1px rgba(0,0,0,.06) inset;
-
-  /* высоту контролирует масштаб; колесо не нужно */
-  max-height: none;
+  background:#fff;
+  border-radius:20px;
+  padding:32px;
+  box-shadow:0 0 0 1px rgba(0,0,0,.06) inset;
   overflow:hidden;
 }
 
@@ -46,7 +42,7 @@ button, input, textarea, select{ font:inherit; }
 .brand{ position:relative; height:140px; margin-bottom:32px; }
 .brand__svg{ position:absolute; inset:0; width:100%; height:100%; object-fit:contain; }
 
-/* секции и заголовки */
+/* секции */
 .section{ margin-bottom:32px; }
 .section:last-child{ margin-bottom:0; }
 .section__title{ margin:0 0 24px; }
@@ -57,7 +53,10 @@ button, input, textarea, select{ font:inherit; }
 .pill{ border:0; border-radius:40px; padding:10px 30px; background:rgba(0,0,0,.06); cursor:pointer; }
 .pill.is-active{ background:#000; color:#fff; }
 
-/* ===== Кастомный слайдер-капсула (40px) ===== */
+/* ——— стек слайдеров в «Сила искажения» ——— */
+.range-stack{ display:flex; flex-direction:column; gap:16px; }
+
+/* Кастомный слайдер-капсула (40px) */
 .range-wrap{
   position:relative; height:40px; border-radius:20px;
   background:#efefef; overflow:hidden; --range-fill:50%;
@@ -78,21 +77,19 @@ button, input, textarea, select{ font:inherit; }
 .range-wrap > input[type=range]::-moz-range-thumb{ width:0; height:0; border:0; background:transparent; }
 .range-wrap > input[type=range]::-ms-track{ height:0; background:transparent; border:0; color:transparent; }
 
-/* ===== Тумблер OFF/ON (40px) ===== */
+/* Тумблер */
 .toggle{ position:relative; display:block; width:100%; height:40px; }
 .toggle input{ position:absolute; inset:0; opacity:0; z-index:3; cursor:pointer; }
 .toggle__rail{ position:absolute; inset:0; background:#efefef; border-radius:999px; overflow:hidden; }
 .toggle__rail::before{
   content:""; position:absolute; top:0; left:0; width:50%; height:100%;
-  background:#000; border-radius:inherit; transform:translateX(0%);
-  transition:transform .18s ease; z-index:1;
+  background:#000; border-radius:inherit; transform:translateX(0%); transition:transform .18s ease; z-index:1;
 }
 .toggle input:checked + .toggle__rail::before{ transform:translateX(100%); }
 .toggle__half{
   position:absolute; top:0; width:50%; height:100%;
-  display:flex; align-items:center; justify-content:center;
-  z-index:2; user-select:none; pointer-events:none;
-  font-size:14px;            /* ← размер меток ON/OFF */
+  display:flex; align-items:center; justify-content:center; z-index:2; user-select:none; pointer-events:none;
+  font-size:14px;
 }
 .toggle__half--off{ left:0;  color:#fff; }
 .toggle__half--on { right:0; color:rgba(0,0,0,.35); }
@@ -103,38 +100,25 @@ button, input, textarea, select{ font:inherit; }
 .textarea{ background:rgba(0,0,0,.06); border-radius:10px; padding:10px; }
 .textarea textarea{ width:100%; background:transparent; border:0; outline:none; resize:vertical; font-size:20px; }
 
-/* === Нижняя панель (все элементы 40px, gap 8, радиус 10) === */
+/* нижняя панель */
 .textbar{ display:flex; gap:8px; align-items:center; }
 
-/* Интерлиньяж — ровно 82×40 */
+/* Интерлиньяж — 82×40 */
 .textbar__group{
   display:flex; gap:8px; align-items:center;
   background:rgba(0,0,0,.06);
-  border-radius:10px;
-  height:40px;
-  padding:0 12px;
-  box-sizing:border-box;
+  border-radius:10px; height:40px; padding:0 12px; box-sizing:border-box;
 }
 #leading-group{ width:82px; }
-
-.textbar__icon{
-  width:14px; height:14px; opacity:.5;
-  user-select:none; -webkit-user-drag:none; user-drag:none;
-  cursor:ns-resize; touch-action:none;
-}
-
-/* цифры 100% — узкий инпут без рамок */
+.textbar__icon{ width:14px; height:14px; opacity:.5; user-select:none; -webkit-user-drag:none; user-drag:none; cursor:ns-resize; touch-action:none; }
 #leading-group .textbar__number{
-  width:36px; font-size:14px; line-height:1;
-  padding:0; margin:0;
-  background:transparent !important;
-  border:0 !important; box-shadow:none !important; outline:none !important;
-  -webkit-appearance:none; appearance:none; border-radius:0;
-  color:#000; caret-color:#000;
+  width:36px; font-size:14px; line-height:1; padding:0; margin:0;
+  background:transparent !important; border:0 !important; box-shadow:none !important; outline:none !important;
+  -webkit-appearance:none; appearance:none; border-radius:0; color:#000; caret-color:#000;
 }
 #leading-group .textbar__number:focus{ outline:none; box-shadow:none; }
 
-/* Капс (56.5×40) */
+/* Капс */
 #caps{
   width:56.5px; height:40px; border-radius:10px;
   display:flex; align-items:center; justify-content:center;
@@ -143,7 +127,7 @@ button, input, textarea, select{ font:inherit; }
 #caps.btn--active{ background:#000; color:#fff; }
 #caps:focus{ outline:none; }
 
-/* Выключка (3-позиционный переключатель) */
+/* Выключка */
 .align{
   position:relative; width:146.5px; height:40px; border-radius:10px;
   background:#efefef; display:grid; grid-template-columns:repeat(3,1fr);
@@ -159,23 +143,18 @@ button, input, textarea, select{ font:inherit; }
 .align__btn{ position:relative; z-index:1; display:flex; align-items:center; justify-content:center; border:0; background:transparent; cursor:pointer; }
 .align__btn:focus{ outline:none; }
 .align__btn img{ width:14px; height:14px; opacity:.45; pointer-events:none; user-select:none; -webkit-user-drag:none; user-drag:none; }
-
 .align[data-value="left"]   .align__btn[data-align="left"]   img,
 .align[data-value="center"] .align__btn[data-align="center"] img,
-.align[data-value="right"]  .align__btn[data-align="right"]  img{
-  opacity:1; filter:invert(1);
-}
+.align[data-value="right"]  .align__btn[data-align="right"]  img{ opacity:1; filter:invert(1); }
 
 /* CTA */
-.cta{ display:block; width:100%; height: var(--cta-h); background:#000; color:#fff; border:0; border-radius:20px; cursor:pointer; }
-.cta--outside{ margin-top: var(--cta-gap); }
+.cta{ display:block; width:100%; height:var(--cta-h); background:#000; color:#fff; border:0; border-radius:20px; cursor:pointer; }
+.cta--outside{ margin-top:var(--cta-gap); }
 
-/* хинты не показываем */
-.hint{ display:none; }
-.foot{ display:none; }
-
-/* канвас справа — позицию переопределяем из JS после измерений панели */
+/* канвас */
 canvas{ position:fixed; top:0; }
 
 /* утилиты */
+.hint{ display:none; }
+.foot{ display:none; }
 .hidden{ display:none; }
