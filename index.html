@@ -15,9 +15,8 @@
 <body>
 
   <!-- ЛЕВАЯ ПАНЕЛЬ -->
-  <aside id="ui" class="panel">
+  <aside class="panel">
     <div class="card">
-
       <!-- Логотип -->
       <div class="brand">
         <img src="brand.svg" alt="Foxford generator" class="brand__svg"/>
@@ -35,26 +34,23 @@
         </div>
       </section>
 
-      <!-- Сила искажения (всегда две дорожки: вторая — placeholder, чтобы не прыгал масштаб) -->
-      <section class="section">
+      <!-- Сила искажения (+ доп. слайдер внизу при Fish/Rise) -->
+      <section class="section" id="distortion-section">
         <p class="section__title">Сила искажения</p>
-
-        <!-- основная -->
-        <div class="range-wrap" id="distortion-wrap">
-          <input id="distortion" type="range" min="-150" max="150" step="1" value="50"/>
-        </div>
-
-        <!-- дополнительная строка (занимает место всегда) -->
-        <!-- для Rise тут активна #distortion2, для Fish тут активен #effect-scale,
-             для остальных — строка остаётся placeholder-ом -->
         <div class="range-stack">
-          <div class="range-wrap" id="distortion2-wrap">
+          <div class="range-wrap">
+            <input id="distortion" type="range" min="-150" max="150" step="1" value="50"/>
+          </div>
+          <!-- второй ползунок для Rise (bend2) -->
+          <div id="distortion2-wrap" class="range-wrap hidden">
             <input id="distortion2" type="range" min="-150" max="150" step="1" value="-80"/>
           </div>
-          <div class="range-wrap" id="effect-scale-wrap">
+          <!-- второй ползунок для Fish (size) -->
+          <div id="size-wrap" class="range-wrap hidden">
             <input id="effect-scale" type="range" min="0.5" max="3" step="0.01" value="1.0"/>
           </div>
         </div>
+        <div id="distortion-hint" class="hint">—</div>
       </section>
 
       <!-- Настроить руками -->
@@ -84,7 +80,7 @@
         <p class="section__title">Настройки текста</p>
 
         <div class="textbar">
-          <!-- Интерлиньяж -->
+          <!-- Интерлиньяж (82×40, радиус 10) -->
           <div class="textbar__group" id="leading-group">
             <img id="leading-icon" src="inter.svg" alt="Интерлиньяж" class="textbar__icon" draggable="false"/>
             <input
@@ -100,10 +96,10 @@
             />
           </div>
 
-          <!-- Капс -->
+          <!-- Капс (56.5×40, радиус 10) -->
           <button id="caps" class="textbar__btn" type="button">Tt</button>
 
-          <!-- Выключка -->
+          <!-- Выключка (146.5×40, радиус 10) -->
           <div id="align" class="align" data-value="center" aria-label="Выключка текста">
             <div class="align__highlight"></div>
             <button class="align__btn" type="button" data-align="left" aria-label="По левому краю">
@@ -122,7 +118,7 @@
       <div id="foot" class="foot">—</div>
     </div>
 
-    <!-- ВНЕ карточки -->
+    <!-- кнопка вплотную к карточке -->
     <button id="export" class="cta cta--outside">Export SVG</button>
   </aside>
 
