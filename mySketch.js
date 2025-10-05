@@ -26,6 +26,8 @@ let isCaps = false, orbitEnabled = false, dragEnabled = false;
 let isDraggingEffect = false, dragStartY = 0, bendStart = 0;
 let lastMouseX = 0, lastMouseY = 0, rotX = 0, rotY = 0;
 
+let uiScale = 1; // масштаб панели
+
 /* ====== preload / setup ====== */
 function preload(){
   font = loadFont('TT Foxford.ttf');
@@ -34,10 +36,13 @@ function preload(){
 function setup(){
   setAttributes('antialias', true);
   const cnv = createCanvas(windowWidth, windowHeight, WEBGL);
-  cnv.style('z-index','0');
-  cnv.style('position','fixed');
-  /* центрируем относительно всего окна — без смещений от панели */
-  cnv.style('left', '0');
+  cnv.style('z-index','0'); cnv.style('position','fixed');
+
+  const cs = getComputedStyle(document.documentElement);
+  const panelX = parseInt(cs.getPropertyValue('--panel-x'))||32;
+  const panelW = parseInt(cs.getPropertyValue('--panel-w'))||365;
+  const gap    = parseInt(cs.getPropertyValue('--gap'))||32;
+  cnv.style('left', `${panelX + panelW + gap}px`);
   cnv.style('top', '0');
 
   textureMode(NORMAL); noStroke();
@@ -46,10 +51,16 @@ function setup(){
   createTextTexture(getCurrentText());
   syncBendSlidersToLimits();
   toggleSecondSliderUI();
+  toggleSizeSliderUI();
   updateBendLabel();
   updateRangeDecor(UI.r1);
+
+  relayoutUI();
 }
-function windowResized(){ resizeCanvas(windowWidth, windowHeight); }
+function windowResized(){
+  resizeCanvas(windowWidth, windowHeight);
+  relayoutUI();
+}
 
 /* ====== UI ====== */
 const UI = {};
@@ -57,13 +68,11 @@ const el = q => document.querySelector(q);
 
 function bindUI(){
   UI.effectBtns = [...document.querySelectorAll('#effect-group .pill')];
-
-  UI.r1    = el('#distortion');
-  UI.r1w   = el('#distortion-wrap');
-  UI.r2    = el('#distortion2');
-  UI.r2w   = el('#distortion2-wrap');
-  UI.size  = el('#effect-scale');
-  UI.sizew = el('#effect-scale-wrap');
+  UI.r1   = el('#distortion');
+  UI.r2   = el('#distortion2');
+  UI.r2w  = el('#distortion2-wrap');
+  UI.size = el('#effect-scale');
+  UI.sizew= el('#size-wrap');
 
   UI.text = el('#text');
   UI.caps = el('#caps');
@@ -78,6 +87,8 @@ function bindUI(){
 
   UI.manual = el('#manual-toggle');
   UI.exportBtn = el('#export');
+  UI.hint = el('#distortion-hint');
+  UI.foot = el('#foot');
 
   // эффекты
   UI.effectBtns.forEach(b=>{
@@ -86,38 +97,27 @@ function bindUI(){
       b.classList.add('is-active');
       currentMode = b.dataset.effect;
       isAnimating = false; animationProgress = 1.0;
-
       if (currentMode === "Rise") { bend = 77; bend2 = -80; effectScale = 1.0; }
-      if (currentMode === "Fish") { effectScale = 1.0; }
-
       syncBendSlidersToLimits();
-      toggleSecondSliderUI();
+      toggleSecondSliderUI(); toggleSizeSliderUI();
       createTextTexture(getCurrentText());
       applyManualToggleBehavior();
-      updateBendLabel();
-      updateRangeDecor(UI.r1);
-      updateRangeDecor(UI.r2);
-      updateRangeDecor(UI.size);
+      updateBendLabel(); updateRangeDecor(UI.r1);
+      relayoutUI();
     });
   });
 
-  // слайдеры
+  // слайдер "Сила искажения"
   UI.r1.addEventListener('input', ()=>{
     bend = +UI.r1.value;
     updateBendLabel(); updateRangeDecor(UI.r1);
   });
-  UI.r2.addEventListener('input', ()=>{
-    bend2 = +UI.r2.value;
-    updateBendLabel(); updateRangeDecor(UI.r2);
-  });
-  UI.size.addEventListener('input', ()=>{
-    effectScale = +UI.size.value;
-    updateBendLabel(); updateRangeDecor(UI.size);
-  });
-
   attachRangeDragBehavior(UI.r1);
   attachRangeDragBehavior(UI.r2);
-  attachRangeDragBehavior(UI.size);
+
+  // вторые диапазоны
+  UI.r2.addEventListener('input', ()=>{ bend2 = +UI.r2.value; updateBendLabel(); });
+  UI.size.addEventListener('input', ()=>{ effectScale = +UI.size.value; updateBendLabel(); });
 
   // текст/капс
   UI.text.addEventListener('input', onTextInput);
@@ -128,7 +128,7 @@ function bindUI(){
   });
   refreshCapsButton();
 
-  // интерлиньяж
+  // ==== Интерлиньяж: ввод и drag ====
   UI.leadingEdit.value = formatLeadingPct(lineHeightFactor);
   UI.leadingEdit.addEventListener('input', onLeadingEdit);
   UI.leadingEdit.addEventListener('blur',  ()=> UI.leadingEdit.value = formatLeadingPct(lineHeightFactor));
@@ -145,7 +145,7 @@ function bindUI(){
   UI.leadingIcon?.addEventListener('dragstart', e => e.preventDefault());
   attachLeadingDrag();
 
-  // выключка
+  // выключка (лево/центр/право)
   UI.alignBtns.forEach(btn=>{
     btn.addEventListener('click', ()=>{
       textAlignMode = btn.dataset.align;
@@ -154,29 +154,22 @@ function bindUI(){
     });
   });
 
-  // тумблер и экспорт
+  // тумблер
   UI.manual.addEventListener('change', applyManualToggleBehavior);
+
+  // экспорт
   UI.exportBtn.addEventListener('click', exportDeformedSVG);
 
-  // стартовые значения
+  // старт
   UI.r1.value = bend; UI.r2.value = bend2; UI.size.value = effectScale;
 }
 
-/* переключение подпола «второго» слайдера.
-   — Всегда оставляем две строки в секции, чтобы панель не прыгала.
-   — Для Rise активен r2, для Fish активен size, остальное — placeholder. */
-function toggleSecondSliderUI(){
-  const isRise = currentMode === 'Rise';
-  const isFish = currentMode === 'Fish';
-
-  UI.r2w.classList.toggle('placeholder', !isRise);
-  UI.sizew.classList.toggle('placeholder', !isFish);
-
-  // если Fish — прячем r2 визуально, если Rise — прячем size.
-  // для остальных — обе строки placeholder (занимают место, но невидимы)
+function refreshCapsButton(){
+  UI.caps.textContent = isCaps ? 'TT' : 'Tt';
+  UI.caps.classList.toggle('btn--active', isCaps);
 }
 
-/* ——— кастомный range: отключение анимации заполнения при drag ——— */
+/* ——— кастомный range: анти-лаг при драге ——— */
 function attachRangeDragBehavior(rangeEl){
   if (!rangeEl) return;
   const wrap = rangeEl.closest('.range-wrap'); if (!wrap) return;
@@ -192,21 +185,14 @@ function attachRangeDragBehavior(rangeEl){
   });
 }
 function updateRangeDecor(rangeEl){
-  if (!rangeEl) return;
-  const wrap = rangeEl.closest('.range-wrap'); if (!wrap) return;
+  const wrap = rangeEl?.closest('.range-wrap'); if (!wrap) return;
   const min = +rangeEl.min, max = +rangeEl.max, val = +rangeEl.value;
   const pct = (val - min) / (max - min) * 100;
   wrap.style.setProperty('--range-fill', `${pct}%`);
 }
 
-/* капс-название */
-function refreshCapsButton(){
-  UI.caps.textContent = isCaps ? 'TT' : 'Tt';
-  UI.caps.classList.toggle('btn--active', isCaps);
-}
-
-/* ——— интерлиньяж как в Фигме ——— */
-const LEADING_MIN = 80, LEADING_MAX = 200; // %, 0.8–2.0
+/* ——— интерлиньяж ——— */
+const LEADING_MIN = 80, LEADING_MAX = 200;
 function clampLeading(p){ return Math.max(LEADING_MIN, Math.min(LEADING_MAX, p)); }
 function getLeadingPercent(){ return Math.round(lineHeightFactor * 100); }
 function formatLeadingPct(f){ return `${Math.round(f*100)}%`; }
@@ -241,6 +227,31 @@ function attachLeadingDrag(){
   });
 }
 
+/* ——— адаптивная панель + позиция канваса ——— */
+function relayoutUI(){
+  const aside = document.querySelector('.panel');
+  const card  = document.querySelector('.card');
+  const btn   = document.querySelector('#export');
+  if(!aside || !card || !btn) return;
+
+  const cs   = getComputedStyle(document.documentElement);
+  const padY = parseInt(cs.getPropertyValue('--panel-y')) || 32;
+
+  const total = card.offsetHeight + btn.offsetHeight;
+  const maxH  = window.innerHeight - padY*2;
+
+  uiScale = Math.min(1, maxH / total);
+  aside.style.transformOrigin = 'top left';
+  aside.style.transform = `scale(${uiScale})`;
+
+  const gap  = parseInt(cs.getPropertyValue('--gap')) || 32;
+  const rect = aside.getBoundingClientRect();
+  const cnv  = document.querySelector('canvas');
+  if (cnv){
+    cnv.style.left = `${Math.round(rect.left + rect.width + gap)}px`;
+  }
+}
+
 function applyManualToggleBehavior(){
   const on = el('#manual-toggle').checked;
   if (on){ if (isSphereMode()){ orbitEnabled = true; dragEnabled = false; } else { orbitEnabled = false; dragEnabled = true; } }
@@ -257,10 +268,11 @@ function syncBendSlidersToLimits(){
   UI.r1.min = -limit1; UI.r1.max = limit1; bend = constrain(bend, -limit1, limit1); UI.r1.value = bend; updateRangeDecor(UI.r1);
 
   const limit2 = getCurrentLimit2();
-  if (limit2 > 0){
-    UI.r2.min = -limit2; UI.r2.max = limit2; bend2 = constrain(bend2, -limit2, limit2); UI.r2.value = bend2;
-  }
+  UI.r2w.classList.toggle('hidden', !(limit2 > 0));
+  if (limit2 > 0){ UI.r2.min = -limit2; UI.r2.max = limit2; bend2 = constrain(bend2, -limit2, limit2); UI.r2.value = bend2; }
 }
+function toggleSecondSliderUI(){ UI.r2w.classList.toggle('hidden', !(getCurrentLimit2() > 0)); relayoutUI(); }
+function toggleSizeSliderUI(){ UI.sizew.classList.toggle('hidden', currentMode !== 'Fish'); relayoutUI(); }
 
 function updateBendLabel(){
   const limit1 = getCurrentLimit();
@@ -300,8 +312,7 @@ function easeInOutCubic(x){ return x<0.5 ? 4*x*x*x : 1 - pow(-2*x+2,3)/2; }
 function startAnimation(){ if(!getCurrentText().trim()) return; createTextTexture(getCurrentText()); animationProgress=0; isAnimating=true; }
 
 function draw(){
-  /* фон страницы уже серый, канвас прозрачный — просто очищаем до прозрачности */
-  clear();
+  background(240); // #f0f0f0
 
   if (!isSphereMode() && dragEnabled && isDraggingEffect){
     let dY=(mouseY-dragStartY)*0.5; bend=constrain(bendStart+dY,-getCurrentLimit(),getCurrentLimit());
@@ -313,12 +324,14 @@ function draw(){
   if (textImg && textImg.width>1){
     let display_w=textImg.width/scale, display_h=textImg.height/scale;
 
-    /* центрирование относительно всего окна — не учитываем панель */
-    const max_w=windowWidth * 0.9;
+    const cs=getComputedStyle(document.documentElement);
+    const panelX=parseInt(cs.getPropertyValue('--panel-x'))||32;
+    const panelW=parseInt(cs.getPropertyValue('--panel-w'))||365;
+    const gap=parseInt(cs.getPropertyValue('--gap'))||32;
+    const max_w=(windowWidth - (panelX+panelW+gap))*0.9;
 
     let view_scale=1; if(display_w>max_w){ view_scale=max_w/display_w; display_w*=view_scale; display_h*=view_scale; }
 
-    /* в WEBGL (0,0) — центр канваса. Ставим картинку по центру окна */
     translate(-display_w/2, -display_h/2 - 50);
     if(isSphereMode()) drawSphereMapped(display_w, display_h); else drawSheetDeform(display_w, display_h);
   }
