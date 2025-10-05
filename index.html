@@ -34,11 +34,21 @@
         </div>
       </section>
 
-      <!-- Сила искажения -->
-      <section class="section">
+      <!-- Сила искажения (+ доп. слайдер внизу при Fish/Rise) -->
+      <section class="section" id="distortion-section">
         <p class="section__title">Сила искажения</p>
-        <div class="range-wrap">
-          <input id="distortion" type="range" min="-150" max="150" step="1" value="50"/>
+        <div class="range-stack">
+          <div class="range-wrap">
+            <input id="distortion" type="range" min="-150" max="150" step="1" value="50"/>
+          </div>
+          <!-- второй ползунок для Rise (bend2) -->
+          <div id="distortion2-wrap" class="range-wrap hidden">
+            <input id="distortion2" type="range" min="-150" max="150" step="1" value="-80"/>
+          </div>
+          <!-- второй ползунок для Fish (size) -->
+          <div id="size-wrap" class="range-wrap hidden">
+            <input id="effect-scale" type="range" min="0.5" max="3" step="0.01" value="1.0"/>
+          </div>
         </div>
         <div id="distortion-hint" class="hint">—</div>
       </section>
@@ -105,21 +115,10 @@
         </div>
       </section>
 
-      <!-- скрытые доп. контролы -->
-      <section id="distortion2-wrap" class="section hidden">
-        <p class="section__subtitle">Сила искажения 2</p>
-        <div class="range-wrap"><input id="distortion2" type="range" min="-150" max="150" step="1" value="-80"/></div>
-      </section>
-
-      <section id="size-wrap" class="section hidden">
-        <p class="section__subtitle">Размер эффекта</p>
-        <div class="range-wrap"><input id="effect-scale" type="range" min="0.5" max="3" step="0.01" value="1.0"/></div>
-      </section>
-
       <div id="foot" class="foot">—</div>
     </div>
 
-    <!-- ВНЕ карточки, вплотную к ней -->
+    <!-- кнопка вплотную к карточке -->
     <button id="export" class="cta cta--outside">Export SVG</button>
   </aside>
 
