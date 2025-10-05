@@ -34,14 +34,10 @@ function preload(){
 function setup(){
   setAttributes('antialias', true);
   const cnv = createCanvas(windowWidth, windowHeight, WEBGL);
-  cnv.style('z-index','0'); cnv.style('position','fixed');
-
-  const cs = getComputedStyle(document.documentElement);
-  const panelX = parseInt(cs.getPropertyValue('--panel-x'))||32;
-  const panelW = parseInt(cs.getPropertyValue('--panel-w'))||365;
-  const gap    = parseInt(cs.getPropertyValue('--gap'))||32;
-  cnv.style('left', `${panelX + panelW + gap}px`);
-  cnv.style('top', '0');
+  cnv.style('z-index','0');
+  cnv.style('position','fixed');
+  cnv.style('left','0px');  // канвас на весь экран
+  cnv.style('top','0');
 
   textureMode(NORMAL); noStroke();
 
@@ -52,12 +48,50 @@ function setup(){
   toggleSizeSliderUI();
   updateBendLabel();
   updateRangeDecor(UI.r1);
+
+  fitPanelToViewport();   // <— вот это
 }
-function windowResized(){ resizeCanvas(windowWidth, windowHeight); }
+function windowResized(){
+  resizeCanvas(windowWidth, windowHeight);
+  fitPanelToViewport();   // <— и здесь
+}
+
 
 /* ====== UI ====== */
 const UI = {};
 const el = q => document.querySelector(q);
+
+// ====== вверху файла рядом с helper'ами ======
+function fitPanelToViewport(){
+  const root = document.getElementById('ui');
+  const card = root?.querySelector('.card');
+  const cta  = document.getElementById('export');
+  if (!root || !card || !cta) return;
+
+  // измеряем естественную высоту (без текущего scale)
+  root.style.transform = 'none';
+  const styles = getComputedStyle(document.documentElement);
+  const padY = parseInt(styles.getPropertyValue('--panel-y')) || 32;
+
+  const natural = card.offsetHeight + cta.offsetHeight + (parseInt(styles.getPropertyValue('--cta-gap'))||0);
+  const avail   = window.innerHeight - padY*2;
+
+  // если не влезает — уменьшаем пропорционально; иначе оставляем 1
+  const s = Math.min(1, avail / Math.max(1, natural));
+  root.style.transformOrigin = 'top left';
+  root.style.transform = `scale(${s})`;
+
+  // дополнительно центрируем вертикально между одинаковыми отступами
+  // (когда s=1 и места много — оставим как есть)
+  if (s < 1){
+    root.style.top = styles.getPropertyValue('--panel-y');
+  } else {
+    // равные отступы: сместим блок так, чтобы снизу было как сверху
+    const extra = (avail - natural) / 2;
+    root.style.top = `calc(var(--panel-y) + ${Math.max(0, extra)}px)`;
+  }
+}
+
 
 function bindUI(){
   UI.effectBtns = [...document.querySelectorAll('#effect-group .pill')];
@@ -279,30 +313,45 @@ function easeInOutCubic(x){ return x<0.5 ? 4*x*x*x : 1 - pow(-2*x+2,3)/2; }
 function startAnimation(){ if(!getCurrentText().trim()) return; createTextTexture(getCurrentText()); animationProgress=0; isAnimating=true; }
 
 function draw(){
-  background(255);
+  background(240); 
 
   if (!isSphereMode() && dragEnabled && isDraggingEffect){
-    let dY=(mouseY-dragStartY)*0.5; bend=constrain(bendStart+dY,-getCurrentLimit(),getCurrentLimit());
+    let dY=(mouseY-dragStartY)*0.5;
+    bend=constrain(bendStart+dY,-getCurrentLimit(),getCurrentLimit());
     UI.r1.value=bend; updateRangeDecor(UI.r1); updateBendLabel();
   }
 
-  if (isAnimating){ animationProgress+=ANIMATION_SPEED; if (animationProgress>=1.0){ animationProgress=1.0; isAnimating=false; } }
+  if (isAnimating){
+    animationProgress+=ANIMATION_SPEED;
+    if (animationProgress>=1.0){ animationProgress=1.0; isAnimating=false; }
+  }
 
   if (textImg && textImg.width>1){
     let display_w=textImg.width/scale, display_h=textImg.height/scale;
 
-    const cs=getComputedStyle(document.documentElement);
-    const panelX=parseInt(cs.getPropertyValue('--panel-x'))||32;
-    const panelW=parseInt(cs.getPropertyValue('--panel-w'))||365;
-    const gap=parseInt(cs.getPropertyValue('--gap'))||32;
-    const max_w=(windowWidth - (panelX+panelW+gap))*0.9;
+    // === живые метрики панели (с учётом scale) ===
+    const gap = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--gap')) || 32;
+    const asideRect = document.getElementById('ui')?.getBoundingClientRect();
+    const leftEdge  = (asideRect ? asideRect.right : 0) + gap; // правая кромка панели + зазор
+    const rightMargin = gap;
+    const availW = Math.max(0, windowWidth - leftEdge - rightMargin);
 
-    let view_scale=1; if(display_w>max_w){ view_scale=max_w/display_w; display_w*=view_scale; display_h*=view_scale; }
+    // подгон ширины под доступную область справа
+    let view_scale=1;
+    if(display_w>availW){ view_scale=availW/display_w; display_w*=view_scale; display_h*=view_scale; }
 
-    translate(-display_w/2, -display_h/2 - 50);
-    if(isSphereMode()) drawSphereMapped(display_w, display_h); else drawSheetDeform(display_w, display_h);
+    // сдвигаем «мировой центр» в геометрический центр правой области
+    // (в WEBGL (0,0) — центр окна, поэтому нужен полусдвиг leftEdge/2)
+    translate(leftEdge/2, 0, 0);
+
+    // теперь аккуратно центрируем саму картинку
+    translate(-display_w/2, -display_h/2);
+
+    if(isSphereMode()) drawSphereMapped(display_w, display_h);
+    else               drawSheetDeform(display_w, display_h);
   }
 }
+
 function isSphereMode(){ return currentMode==='Sphere'; }
 
 function drawSheetDeform(display_w, display_h){
