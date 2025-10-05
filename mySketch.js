@@ -83,7 +83,7 @@ function fitPanelToViewport(){
     return ()=>{ el.style.visibility=''; el.style.display=''; if (wasHidden) el.classList.add('hidden'); };
   };
   const undo1 = ghostOn(document.querySelector('#distortion2-wrap'));
-  const undo2 = ghostOn(document.querySelector('#effect-scale-wrap'));
+  const undo2 = ghostOn(document.querySelector('#size-wrap'));
 
   // 3) собственно замер
   const naturalH = panel.getBoundingClientRect().height;
@@ -146,7 +146,7 @@ function bindUI(){
   UI.r2   = el('#distortion2');
   UI.r2w  = el('#distortion2-wrap');     // теперь под заголовком "Сила искажения"
   UI.size = el('#effect-scale');
-  UI.sizew= el('#effect-scale-wrap');     // тоже под тем же заголовком
+  UI.sizew= el('#size-wrap');     // тоже под тем же заголовком
 
   UI.text = el('#text');
   UI.caps = el('#caps');
