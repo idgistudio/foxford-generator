@@ -335,7 +335,13 @@ function syncBendSlidersToLimits(){
   UI.r1.min = -limit1; UI.r1.max = limit1; bend = constrain(bend, -limit1, limit1); UI.r1.value = bend; updateRangeDecor(UI.r1);
 
   const limit2 = getCurrentLimit2();
-  if (limit2 > 0){ UI.r2.min = -limit2; UI.r2.max = limit2; bend2 = constrain(bend2, -limit2, limit2); UI.r2.value = bend2; }
+  if (limit2 > 0){
+   UI.r2.min = -limit2; UI.r2.max = limit2;
+   bend2 = constrain(bend2, -limit2, limit2);
+   UI.r2.value = bend2;
+   updateRangeDecor(UI.r2);
+ }
+ updateRangeDecor(UI.size); // размер эффекта не меняем, но подсветку синхронизируем
 }
 function toggleSecondSliderUI(){ 
   // показываем второй «силы искажения» только для Rise
