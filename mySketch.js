@@ -186,13 +186,23 @@ function bindUI(){
   UI.r1.addEventListener('input', ()=>{
     bend = +UI.r1.value;
     updateBendLabel(); updateRangeDecor(UI.r1);
+    updateRangeDecor(UI.r2);
+    updateRangeDecor(UI.size);
   });
   attachRangeDragBehavior(UI.r1);
   attachRangeDragBehavior(UI.r2);
 
   // вторые диапазоны (под первым)
-  UI.r2?.addEventListener('input', ()=>{ bend2 = +UI.r2.value; updateBendLabel(); });
-  UI.size?.addEventListener('input', ()=>{ effectScale = +UI.size.value; updateBendLabel(); });
+  UI.r2?.addEventListener('input', ()=>{
+   bend2 = +UI.r2.value;
+   updateBendLabel();
+   updateRangeDecor(UI.r2);
+ });
+ UI.size?.addEventListener('input', ()=>{
+   effectScale = +UI.size.value;
+   updateBendLabel();
+   updateRangeDecor(UI.size);
+ });
 
   // текст/капс
   UI.text.addEventListener('input', onTextInput);
@@ -237,6 +247,10 @@ function bindUI(){
 
   // старт
   UI.r1.value = bend; UI.r2.value = bend2; UI.size.value = effectScale;
+  updateRangeDecor(UI.r1);
+  updateRangeDecor(UI.r2);
+  updateRangeDecor(UI.size);
+
 
   // пересчёт масштаба панели при первом рендере шрифтов/иконок
   setTimeout(fitPanelToViewport, 0);
