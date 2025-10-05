@@ -1,3 +1,4 @@
+let cnv; 
 /* ====== ФОНТЫ/ПАРАМЕТРЫ ====== */
 let font, otFont;
 
@@ -27,6 +28,21 @@ let isDraggingEffect = false, dragStartY = 0, bendStart = 0;
 let lastMouseX = 0, lastMouseY = 0, rotX = 0, rotY = 0;
 
 /* ====== helpers (css vars, панель/канвас) ====== */
+function layoutCanvas(){
+  const cs = getComputedStyle(document.documentElement);
+  const panelX = parseInt(cs.getPropertyValue('--panel-x')) || 32;
+  const panelW = parseInt(cs.getPropertyValue('--panel-w')) || 365;
+  const gap    = parseInt(cs.getPropertyValue('--gap'))     || 32;
+
+  const stageLeft  = panelX + panelW + gap;                 // где начинается «сцена»
+  const rightGutter = panelX;                                // симметричный отступ справа (можешь поменять)
+  const stageWidth = Math.max(320, windowWidth - stageLeft - rightGutter);
+
+  if (cnv) resizeCanvas(stageWidth, windowHeight);
+  cnv?.style('left', `${stageLeft}px`);
+  cnv?.style('top',  `0`);
+}
+
 const css = {
   getNum(name){
     const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -96,7 +112,9 @@ function preload(){
 }
 function setup(){
   setAttributes('antialias', true);
-  const cnv = createCanvas(windowWidth, windowHeight, WEBGL);
+  cnv = createCanvas(1, 1, WEBGL);
+  layoutCanvas();                   
+  textureMode(NORMAL); noStroke();
   cnv.style('z-index','0');
   cnv.style('position','fixed');
   cnv.style('top','0');
@@ -115,10 +133,8 @@ function setup(){
   fitPanelToViewport();
   setCanvasLeftByPanel();
 }
-function windowResized(){
-  resizeCanvas(windowWidth, windowHeight);
-  fitPanelToViewport();
-}
+function windowResized(){ layoutCanvas(); }
+
 
 /* ====== UI ====== */
 const UI = {};
@@ -373,7 +389,8 @@ function draw(){
     const s     =css.getNum('--panel-scale')||1;
     const leftOffset = panelX + panelW*s + gap;
 
-    const max_w=(windowWidth - leftOffset) * 0.96; // чуть-чуть воздух
+    // вместо вычислений через panelX/panelW/gap:
+    const max_w = width * 0.9; 
     let view_scale=1; if(display_w>max_w){ view_scale=max_w/display_w; display_w*=view_scale; display_h*=view_scale; }
 
     translate(-display_w/2, -display_h/2 - 50);
