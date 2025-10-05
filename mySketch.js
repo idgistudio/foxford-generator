@@ -26,7 +26,7 @@ let isCaps = false, orbitEnabled = false, dragEnabled = false;
 let isDraggingEffect = false, dragStartY = 0, bendStart = 0;
 let lastMouseX = 0, lastMouseY = 0, rotX = 0, rotY = 0;
 
-let cnvEl; // ссылка на p5-канвас дом-элемент
+let uiScale = 1; // текущий масштаб панели
 
 /* ====== preload / setup ====== */
 function preload(){
@@ -35,10 +35,16 @@ function preload(){
 }
 function setup(){
   setAttributes('antialias', true);
+  const cnv = createCanvas(windowWidth, windowHeight, WEBGL);
+  cnv.style('z-index','0'); cnv.style('position','fixed');
 
-  // создаём, затем подгоняем размер под правую область
-  cnvEl = createCanvas(1, 1, WEBGL);
-  sizeCanvasToRight();
+  // первичный сдвиг (будет уточнён relayoutUI)
+  const cs = getComputedStyle(document.documentElement);
+  const panelX = parseInt(cs.getPropertyValue('--panel-x'))||32;
+  const panelW = parseInt(cs.getPropertyValue('--panel-w'))||365;
+  const gap    = parseInt(cs.getPropertyValue('--gap'))||32;
+  cnv.style('left', `${panelX + panelW + gap}px`);
+  cnv.style('top', '0');
 
   textureMode(NORMAL); noStroke();
 
@@ -50,11 +56,11 @@ function setup(){
   updateBendLabel();
   updateRangeDecor(UI.r1);
 
-  fitPanelToViewport(); // масштаб панели под высоту
+  relayoutUI(); // ← важный первый пересчёт
 }
 function windowResized(){
-  sizeCanvasToRight();
-  fitPanelToViewport();
+  resizeCanvas(windowWidth, windowHeight);
+  relayoutUI();
 }
 
 /* ====== UI ====== */
@@ -98,6 +104,7 @@ function bindUI(){
       createTextTexture(getCurrentText());
       applyManualToggleBehavior();
       updateBendLabel(); updateRangeDecor(UI.r1);
+      relayoutUI(); // при появлении/скрытии доп. блоков
     });
   });
 
@@ -120,9 +127,9 @@ function bindUI(){
     refreshCapsButton();
     createTextTexture(getCurrentText());
   });
-  refreshCapsButton();
+  refreshCapsButton(); // начальная надпись и заливка
 
-  // ==== Интерлиньяж ====
+  // ==== Интерлиньяж: ввод и drag по иконке ====
   UI.leadingEdit.value = formatLeadingPct(lineHeightFactor);
   UI.leadingEdit.addEventListener('input', onLeadingEdit);
   UI.leadingEdit.addEventListener('blur',  ()=> UI.leadingEdit.value = formatLeadingPct(lineHeightFactor));
@@ -221,6 +228,32 @@ function attachLeadingDrag(){
   });
 }
 
+/* ——— адаптивная панель + позиционирование канваса ——— */
+function relayoutUI(){
+  const aside = document.querySelector('.panel');
+  const card  = document.querySelector('.card');
+  const btn   = document.querySelector('#export');
+  if(!aside || !card || !btn) return;
+
+  const cs   = getComputedStyle(document.documentElement);
+  const padY = parseInt(cs.getPropertyValue('--panel-y')) || 32;
+
+  const total = card.offsetHeight + btn.offsetHeight;
+  const maxH  = window.innerHeight - padY*2;
+
+  uiScale = Math.min(1, maxH / total);
+  aside.style.transformOrigin = 'top left';
+  aside.style.transform = `scale(${uiScale})`;
+
+  // точный сдвиг канваса от фактической (уже масштабированной) панели
+  const gap  = parseInt(cs.getPropertyValue('--gap')) || 32;
+  const rect = aside.getBoundingClientRect();
+  const cnv  = document.querySelector('canvas');
+  if (cnv){
+    cnv.style.left = `${Math.round(rect.left + rect.width + gap)}px`;
+  }
+}
+
 function applyManualToggleBehavior(){
   const on = el('#manual-toggle').checked;
   if (on){ if (isSphereMode()){ orbitEnabled = true; dragEnabled = false; } else { orbitEnabled = false; dragEnabled = true; } }
@@ -240,8 +273,8 @@ function syncBendSlidersToLimits(){
   UI.r2w.classList.toggle('hidden', !(limit2 > 0));
   if (limit2 > 0){ UI.r2.min = -limit2; UI.r2.max = limit2; bend2 = constrain(bend2, -limit2, limit2); UI.r2.value = bend2; }
 }
-function toggleSecondSliderUI(){ UI.r2w.classList.toggle('hidden', !(getCurrentLimit2() > 0)); }
-function toggleSizeSliderUI(){ UI.sizew.classList.toggle('hidden', currentMode !== 'Fish'); }
+function toggleSecondSliderUI(){ UI.r2w.classList.toggle('hidden', !(getCurrentLimit2() > 0)); relayoutUI(); }
+function toggleSizeSliderUI(){ UI.sizew.classList.toggle('hidden', currentMode !== 'Fish'); relayoutUI(); }
 
 function updateBendLabel(){
   const limit1 = getCurrentLimit();
@@ -255,53 +288,6 @@ function updateBendLabel(){
     console.log('[distortion]', `${eff1.toFixed(1)} / ${limit1} [${currentMode}]`);
   }
   console.log('[manual]', `Drag:${dragEnabled?'ON':'OFF'} / Orbit:${orbitEnabled?'ON':'OFF'}`);
-}
-
-/* ====== ХЕЛПЕРЫ ЛЭЙАУТА ====== */
-// размеры правой области и позиция канваса
-function sizeCanvasToRight(){
-  const cs   = getComputedStyle(document.documentElement);
-  const panelX = parseInt(cs.getPropertyValue('--panel-x')) || 32;
-  const panelW = parseInt(cs.getPropertyValue('--panel-w')) || 365;
-  const gap    = parseInt(cs.getPropertyValue('--gap'))      || 32;
-
-  const left   = panelX + panelW + gap;
-  const availW = Math.max(1, window.innerWidth - left);
-
-  cnvEl.style('position', 'fixed');
-  cnvEl.style('left', `${left}px`);
-  cnvEl.style('top',  `0`);
-
-  resizeCanvas(availW, window.innerHeight);
-}
-
-// масштабируем содержимое карточки под высоту вьюпорта
-function fitPanelToViewport(){
-  const aside = document.getElementById('ui');
-  const card  = aside?.querySelector('.card');
-  const inner = document.getElementById('card-inner');
-  const cta   = document.getElementById('export');
-  if(!aside || !card || !inner || !cta) return;
-
-  // сброс трансформа перед замером
-  inner.style.transform = 'none';
-
-  const rs   = getComputedStyle(document.documentElement);
-  const padY = parseInt(rs.getPropertyValue('--panel-y')) || 32;
-  const gapC = parseInt(rs.getPropertyValue('--cta-gap')) || 0;
-
-  // естественная высота без масштабирования
-  const naturalH = card.offsetHeight + cta.offsetHeight + gapC;
-  const availH   = window.innerHeight - padY*2;
-
-  const s = Math.min(1, availH / Math.max(1, naturalH));
-  inner.style.transformOrigin = 'top left';
-  inner.style.transform = `scale(${s})`;
-
-  // выравниваем вертикальные отступы
-  const totalH = card.getBoundingClientRect().height + cta.getBoundingClientRect().height + gapC;
-  const extra  = Math.max(0, (window.innerHeight - totalH)/2 - padY);
-  aside.style.top = `calc(var(--panel-y) + ${extra}px)`;
 }
 
 /* ====== РЕНДЕР ====== */
@@ -328,7 +314,7 @@ function easeInOutCubic(x){ return x<0.5 ? 4*x*x*x : 1 - pow(-2*x+2,3)/2; }
 function startAnimation(){ if(!getCurrentText().trim()) return; createTextTexture(getCurrentText()); animationProgress=0; isAnimating=true; }
 
 function draw(){
-  background(240); // #F0F0F0 — едино и для GitHub Pages, и локально
+  background(240); // #f0f0f0 вместо белого
 
   if (!isSphereMode() && dragEnabled && isDraggingEffect){
     let dY=(mouseY-dragStartY)*0.5; bend=constrain(bendStart+dY,-getCurrentLimit(),getCurrentLimit());
@@ -344,11 +330,13 @@ function draw(){
     const panelX=parseInt(cs.getPropertyValue('--panel-x'))||32;
     const panelW=parseInt(cs.getPropertyValue('--panel-w'))||365;
     const gap=parseInt(cs.getPropertyValue('--gap'))||32;
+
+    // максимальная ширина — «экран минус панель», на ~10% отступа
     const max_w=(windowWidth - (panelX+panelW+gap))*0.9;
 
     let view_scale=1; if(display_w>max_w){ view_scale=max_w/display_w; display_w*=view_scale; display_h*=view_scale; }
 
-    translate(-display_w/2, -display_h/2 - 50); // центр в правой области, немного вверх
+    translate(-display_w/2, -display_h/2 - 50);
     if(isSphereMode()) drawSphereMapped(display_w, display_h); else drawSheetDeform(display_w, display_h);
   }
 }
