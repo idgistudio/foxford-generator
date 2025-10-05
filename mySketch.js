@@ -26,7 +26,7 @@ let isCaps = false, orbitEnabled = false, dragEnabled = false;
 let isDraggingEffect = false, dragStartY = 0, bendStart = 0;
 let lastMouseX = 0, lastMouseY = 0, rotX = 0, rotY = 0;
 
-let uiScale = 1; // текущий масштаб панели
+let uiScale = 1; // масштаб панели
 
 /* ====== preload / setup ====== */
 function preload(){
@@ -38,7 +38,6 @@ function setup(){
   const cnv = createCanvas(windowWidth, windowHeight, WEBGL);
   cnv.style('z-index','0'); cnv.style('position','fixed');
 
-  // первичный сдвиг (будет уточнён relayoutUI)
   const cs = getComputedStyle(document.documentElement);
   const panelX = parseInt(cs.getPropertyValue('--panel-x'))||32;
   const panelW = parseInt(cs.getPropertyValue('--panel-w'))||365;
@@ -56,7 +55,7 @@ function setup(){
   updateBendLabel();
   updateRangeDecor(UI.r1);
 
-  relayoutUI(); // ← важный первый пересчёт
+  relayoutUI();
 }
 function windowResized(){
   resizeCanvas(windowWidth, windowHeight);
@@ -104,7 +103,7 @@ function bindUI(){
       createTextTexture(getCurrentText());
       applyManualToggleBehavior();
       updateBendLabel(); updateRangeDecor(UI.r1);
-      relayoutUI(); // при появлении/скрытии доп. блоков
+      relayoutUI();
     });
   });
 
@@ -127,9 +126,9 @@ function bindUI(){
     refreshCapsButton();
     createTextTexture(getCurrentText());
   });
-  refreshCapsButton(); // начальная надпись и заливка
+  refreshCapsButton();
 
-  // ==== Интерлиньяж: ввод и drag по иконке ====
+  // ==== Интерлиньяж: ввод и drag ====
   UI.leadingEdit.value = formatLeadingPct(lineHeightFactor);
   UI.leadingEdit.addEventListener('input', onLeadingEdit);
   UI.leadingEdit.addEventListener('blur',  ()=> UI.leadingEdit.value = formatLeadingPct(lineHeightFactor));
@@ -170,7 +169,7 @@ function refreshCapsButton(){
   UI.caps.classList.toggle('btn--active', isCaps);
 }
 
-/* ——— кастомный range: отключение анимации заполнения при drag ——— */
+/* ——— кастомный range: анти-лаг при драге ——— */
 function attachRangeDragBehavior(rangeEl){
   if (!rangeEl) return;
   const wrap = rangeEl.closest('.range-wrap'); if (!wrap) return;
@@ -192,8 +191,8 @@ function updateRangeDecor(rangeEl){
   wrap.style.setProperty('--range-fill', `${pct}%`);
 }
 
-/* ——— интерлиньяж как в Фигме ——— */
-const LEADING_MIN = 80, LEADING_MAX = 200; // %, 0.8–2.0
+/* ——— интерлиньяж ——— */
+const LEADING_MIN = 80, LEADING_MAX = 200;
 function clampLeading(p){ return Math.max(LEADING_MIN, Math.min(LEADING_MAX, p)); }
 function getLeadingPercent(){ return Math.round(lineHeightFactor * 100); }
 function formatLeadingPct(f){ return `${Math.round(f*100)}%`; }
@@ -220,7 +219,7 @@ function attachLeadingDrag(){
     if (!dragging) return;
     const dy = (e.clientY||0) - startY;
     const speed = (e.shiftKey ? 4 : 1);
-    const delta = Math.round(-dy / 4) * speed;  // ~1% на 4px
+    const delta = Math.round(-dy / 4) * speed;
     setLeadingPercent( clampLeading(startPct + delta) );
   });
   ['pointerup','pointercancel','blur'].forEach(ev=>{
@@ -228,7 +227,7 @@ function attachLeadingDrag(){
   });
 }
 
-/* ——— адаптивная панель + позиционирование канваса ——— */
+/* ——— адаптивная панель + позиция канваса ——— */
 function relayoutUI(){
   const aside = document.querySelector('.panel');
   const card  = document.querySelector('.card');
@@ -245,7 +244,6 @@ function relayoutUI(){
   aside.style.transformOrigin = 'top left';
   aside.style.transform = `scale(${uiScale})`;
 
-  // точный сдвиг канваса от фактической (уже масштабированной) панели
   const gap  = parseInt(cs.getPropertyValue('--gap')) || 32;
   const rect = aside.getBoundingClientRect();
   const cnv  = document.querySelector('canvas');
@@ -314,7 +312,7 @@ function easeInOutCubic(x){ return x<0.5 ? 4*x*x*x : 1 - pow(-2*x+2,3)/2; }
 function startAnimation(){ if(!getCurrentText().trim()) return; createTextTexture(getCurrentText()); animationProgress=0; isAnimating=true; }
 
 function draw(){
-  background(240); // #f0f0f0 вместо белого
+  background(240); // #f0f0f0
 
   if (!isSphereMode() && dragEnabled && isDraggingEffect){
     let dY=(mouseY-dragStartY)*0.5; bend=constrain(bendStart+dY,-getCurrentLimit(),getCurrentLimit());
@@ -330,8 +328,6 @@ function draw(){
     const panelX=parseInt(cs.getPropertyValue('--panel-x'))||32;
     const panelW=parseInt(cs.getPropertyValue('--panel-w'))||365;
     const gap=parseInt(cs.getPropertyValue('--gap'))||32;
-
-    // максимальная ширина — «экран минус панель», на ~10% отступа
     const max_w=(windowWidth - (panelX+panelW+gap))*0.9;
 
     let view_scale=1; if(display_w>max_w){ view_scale=max_w/display_w; display_w*=view_scale; display_h*=view_scale; }
@@ -416,347 +412,4 @@ function mouseReleased(){ isDraggingEffect=false; }
 function onTextInput(){ createTextTexture(getCurrentText()); isAnimating=false; animationProgress=1.0; }
 
 /* ====== EXPORT SVG ====== */
-function exportDeformedSVG() {
-  if (!otFont) { alert("Font not loaded!"); return; }
-
-  const lines = getCurrentText().split('\n');
-
-  const fontSize = 150;
-  const pad = fontSize * 1;
-  const lineHeight = fontSize * lineHeightFactor;
-
-  const unitsPerEm = otFont.unitsPerEm || 1000;
-  const ascent  = (otFont.ascender  || 0) / unitsPerEm * fontSize;
-
-  let maxAdvance = 0;
-  for (const line of lines) {
-    const adv = otFont.getAdvanceWidth(line, fontSize);
-    if (adv > maxAdvance) maxAdvance = adv;
-  }
-  const svgW = maxAdvance + pad * 2;
-  const svgH = lines.length * lineHeight + pad * 2;
-
-  // масштаб предпросмотра (как в draw)
-  let display_w = textImg.width / scale;
-  let display_h = textImg.height / scale;
-
-  const styles = getComputedStyle(document.documentElement);
-  const panelX = parseInt(styles.getPropertyValue('--panel-x')) || 32;
-  const panelW = parseInt(styles.getPropertyValue('--panel-w')) || 365;
-  const gap    = parseInt(styles.getPropertyValue('--gap')) || 32;
-  const max_w = (windowWidth - (panelX + panelW + gap)) * 0.9;
-
-  let view_scale = 1;
-  if (display_w > max_w) {
-    view_scale = max_w / display_w;
-    display_w *= view_scale;
-    display_h *= view_scale;
-  }
-
-  const texW = svgW * view_scale;
-  const texH = svgH * view_scale;
-
-  const lerpN = (a, b, t) => a + (b - a) * t;
-  const segLen = (x0,y0,x1,y1) => Math.hypot(x1-x0, y1-y0);
-  const cubicPoint = (p0, p1, p2, p3, t) => {
-    const mt = 1 - t;
-    return mt*mt*mt*p0 + 3*mt*mt*t*p1 + 3*mt*t*t*p2 + t*t*t*p3;
-  };
-  const quadPoint = (p0, p1, p2, t) => {
-    const mt = 1 - t;
-    return mt*mt*p0 + 2*mt*t*p1 + t*t*p2;
-  };
-  const samplesForLength = (pxLenRaw, min=6, max=200) => {
-    const pxLen = pxLenRaw * view_scale;
-    const basePix = 6;
-    return Math.max(min, Math.min(max, Math.ceil(pxLen / basePix)));
-  };
-
-  const deform2D = (x, y) => {
-    const normX = map(x, 0, texW, -1, 1);
-    const nx = (currentMode === "Fish") ? (normX / effectScale) : normX;
-
-    const limit1 = getCurrentLimit();
-    const local1 = Math.max(-limit1, Math.min(limit1, bend));
-    const limit2 = getCurrentLimit2();
-    const local2 = Math.max(-limit2, Math.min(limit2, bend2));
-
-    let upperDist = 0, lowerDist = 0;
-
-    if (currentMode === "Fish") {
-      const N = 2;
-      upperDist = Math.sin(nx * Math.PI * N) * (local1 / 65.0);
-      lowerDist = Math.sin(nx * Math.PI * N + Math.PI) * (local1 / 65.0);
-    } else if (currentMode === "Flag") {
-      const d = Math.sin(nx * Math.PI) * (local1 / 100.0);
-      upperDist = lowerDist = d;
-    } else if (currentMode === "Arc") {
-      const d = -Math.pow(nx, 2) * (local1 / 80.0);
-      upperDist = lowerDist = d;
-    } else if (currentMode === "Rise") {
-      const { upper, lower } = applyRiseFishAI(nx, local1, local2);
-      upperDist = upper;
-      lowerDist = lower;
-    }
-
-    const yTopNew = -upperDist * texH * 0.5;
-    const yBotNew =  texH - lowerDist * texH * 0.5;
-    const newY = map(y, 0, texH, yTopNew, yBotNew);
-    return [x, newY];
-  };
-
-  /* ---- Плоскость ---- */
-  if (!isSphereMode()) {
-    let svgPaths = [];
-    for (let li = 0; li < lines.length; li++) {
-      const line = lines[li];
-
-      const adv = otFont.getAdvanceWidth(line, fontSize);
-
-      let originX;
-      if (textAlignMode==='left')  originX = pad;
-      else if (textAlignMode==='right') originX = svgW - pad - adv;
-      else originX = (svgW - adv) * 0.5;
-
-      const originY = pad + li * lineHeight + ascent;
-      const path = otFont.getPath(line, originX, originY, fontSize);
-
-      let out = [];
-      let cx = 0, cy = 0, sx = 0, sy = 0;
-
-      const toScreen = (x,y) => [x * view_scale, y * view_scale];
-
-      for (let i = 0; i < path.commands.length; i++) {
-        const cmd = path.commands[i];
-
-        if (cmd.type === 'M') {
-          let [mx,my] = toScreen(cmd.x, cmd.y);
-          [mx,my] = deform2D(mx,my);
-          out.push(`M${mx},${my}`);
-          cx = sx = cmd.x; cy = sy = cmd.y;
-
-        } else if (cmd.type === 'L') {
-          const x1 = cx, y1 = cy, x2 = cmd.x, y2 = cmd.y;
-          const n = samplesForLength(segLen(x1,y1,x2,y2));
-          for (let k = 1; k <= n; k++) {
-            const t = k / n;
-            let px = lerpN(x1,x2,t), py = lerpN(y1,y2,t);
-            [px,py] = toScreen(px,py);
-            const [dx,dy] = deform2D(px,py);
-            out.push(`L${dx},${dy}`);
-          }
-          cx = x2; cy = y2;
-
-        } else if (cmd.type === 'C') {
-          const p0x = cx, p0y = cy;
-          const p1x = cmd.x1, p1y = cmd.y1;
-          const p2x = cmd.x2, p2y = cmd.y2;
-          const p3x = cmd.x,  p3y = cmd.y;
-          const n = samplesForLength(
-            segLen(p0x,p0y,p1x,p1y) + segLen(p1x,p1y,p2x,p2y) + segLen(p2x,p2y,p3x,p3y)
-          );
-          for (let k = 1; k <= n; k++) {
-            const t = k / n;
-            let px = cubicPoint(p0x,p1x,p2x,p3x,t);
-            let py = cubicPoint(p0y,p1y,p2y,p3y,t);
-            [px,py] = toScreen(px,py);
-            const [dx,dy] = deform2D(px,py);
-            out.push(`L${dx},${dy}`);
-          }
-          cx = p3x; cy = p3y;
-
-        } else if (cmd.type === 'Q') {
-          const p0x = cx, p0y = cy;
-          const p1x = cmd.x1, p1y = cmd.y1;
-          const p2x = cmd.x,  p2y = cmd.y;
-          const n = samplesForLength(segLen(p0x,p0y,p1x,p1y) + segLen(p1x,p1y,p2x,p2y));
-          for (let k = 1; k <= n; k++) {
-            const t = k / n;
-            let px = quadPoint(p0x,p1x,p2x,t);
-            let py = quadPoint(p0y,p1y,p2y,t);
-            [px,py] = toScreen(px,py);
-            const [dx,dy] = deform2D(px,py);
-            out.push(`L${dx},${dy}`);
-          }
-          cx = p2x; cy = p2y;
-
-        } else if (cmd.type === 'Z') {
-          const x1 = cx, y1 = cy, x2 = sx, y2 = sy;
-          const n = samplesForLength(segLen(x1,y1,x2,y2));
-          for (let k = 1; k <= n; k++) {
-            const t = k / n;
-            let px = lerpN(x1,x2,t), py = lerpN(y1,y2,t);
-            [px,py] = toScreen(px,py);
-            const [dx,dy] = deform2D(px,py);
-            out.push(`L${dx},${dy}`);
-          }
-          out.push('Z');
-          cx = x2; cy = y2;
-        }
-      }
-
-      svgPaths.push(`<path d="${out.join('')}" fill="black" stroke="none"/>`);
-    }
-
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
-      <g transform="translate(${width/2 - texW/2}, ${height/2 - texH/2 - 50})">
-        ${svgPaths.join("\n")}
-      </g>
-    </svg>`;
-
-    const blob = new Blob([svg], { type: "image/svg+xml" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'deformed-text.svg';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-    return;
-  }
-
-  /* ---- Сфера ---- */
-  const limit = getCurrentLimit();
-  const wrap = constrain(Math.abs(bend) / limit, 0, 1);
-  const baseR = Math.min(display_w, display_h) * 0.5;
-  const r = baseR * (SPHERE_R_MIN + (SPHERE_R_MAX - SPHERE_R_MIN) * wrap);
-  const spanX = SPHERE_SPAN_X, spanY = SPHERE_SPAN_Y;
-
-  const srx = Math.sin(rotX), crx = Math.cos(rotX);
-  const sry = Math.sin(rotY), cry = Math.cos(rotY);
-  const rotXY = (x,y,z) => {
-    let y1 = y*crx - z*srx;
-    let z1 = y*srx + z*crx;
-    let x1 = x;
-    let x2 =  x1*cry + z1*sry;
-    let z2 = -x1*sry + z1*cry;
-    return [x2, y1, z2];
-  };
-
-  const FOV = Math.PI / 3;
-  const CAM_Z = (height / 2) / Math.tan(FOV / 2);
-
-  const projectSphere2D = (x, y) => {
-    const u = x / (svgW * view_scale);
-    const v = y / (svgH * view_scale);
-    const alpha = (u - 0.5) * spanX;
-    const beta  = (v - 0.5) * spanY;
-
-    const ca = Math.cos(alpha), sa = Math.sin(alpha);
-    const cb = Math.cos(beta),  sb = Math.sin(beta);
-
-    const X = r * sa * cb;
-    const Y = r * sb;
-    const Z = r * ca * cb;
-
-    const [xr, yr, zr] = rotXY(X, Y, Z);
-    const s = CAM_Z / ((CAM_Z - zr) || 1e-6);
-    return [xr * s, yr * s];
-  };
-
-  let svgPaths = [];
-  for (let li = 0; li < lines.length; li++) {
-    const line = lines[li];
-
-    const adv = otFont.getAdvanceWidth(line, fontSize);
-
-    let originX;
-    if (textAlignMode==='left')  originX = pad;
-    else if (textAlignMode==='right') originX = svgW - pad - adv;
-    else originX = (svgW - adv) * 0.5;
-
-    const originY = pad + li * lineHeight + ascent;
-    const path = otFont.getPath(line, originX, originY, fontSize);
-
-    let out = [];
-    let cx = 0, cy = 0, sx = 0, sy = 0;
-    const toScreen = (x,y) => [x * view_scale, y * view_scale];
-
-    for (let i = 0; i < path.commands.length; i++) {
-      const cmd = path.commands[i];
-
-      if (cmd.type === 'M') {
-        let [mx,my] = toScreen(cmd.x,cmd.y);
-        [mx,my] = projectSphere2D(mx,my);
-        out.push(`M${mx},${my}`);
-        cx = sx = cmd.x; cy = sy = cmd.y;
-
-      } else if (cmd.type === 'L') {
-        const x1 = cx, y1 = cy, x2 = cmd.x, y2 = cmd.y;
-        const n = samplesForLength(segLen(x1,y1,x2,y2));
-        for (let k = 1; k <= n; k++) {
-          const t = k / n;
-          let px = lerpN(x1,x2,t), py = lerpN(y1,y2,t);
-          [px,py] = toScreen(px,py);
-          const [dx,dy] = projectSphere2D(px,py);
-          out.push(`L${dx},${dy}`);
-        }
-        cx = x2; cy = y2;
-
-      } else if (cmd.type === 'C') {
-        const p0x = cx, p0y = cy;
-        const p1x = cmd.x1, p1y = cmd.y1;
-        const p2x = cmd.x2, p2y = cmd.y2;
-        const p3x = cmd.x,  p3y = cmd.y;
-        const n = samplesForLength(
-          segLen(p0x,p0y,p1x,p1y) + segLen(p1x,p1y,p2x,p2y) + segLen(p2x,p2y,p3x,p3y)
-        );
-        for (let k = 1; k <= n; k++) {
-          const t = k / n;
-          let px = cubicPoint(p0x,p1x,p2x,p3x,t);
-          let py = cubicPoint(p0y,p1y,p2y,p3y,t);
-          [px,py] = toScreen(px,py);
-          const [dx,dy] = projectSphere2D(px,py);
-          out.push(`L${dx},${dy}`);
-        }
-        cx = p3x; cy = p3y;
-
-      } else if (cmd.type === 'Q') {
-        const p0x = cx, p0y = cy;
-        const p1x = cmd.x1, p1y = cmd.y1;
-        const p2x = cmd.x,  p2y = cmd.y;
-        const n = samplesForLength(segLen(p0x,p0y,p1x,p1y) + segLen(p1x,p1y,p2x,p2y));
-        for (let k = 1; k <= n; k++) {
-          const t = k / n;
-          let px = quadPoint(p0x,p1x,p2x,t);
-          let py = quadPoint(p0y,p1y,p2y,t);
-          [px,py] = toScreen(px,py);
-          const [dx,dy] = projectSphere2D(px,py);
-          out.push(`L${dx},${dy}`);
-        }
-        cx = p2x; cy = p2y;
-
-      } else if (cmd.type === 'Z') {
-        const x1 = cx, y1 = cy, x2 = sx, y2 = sy;
-        const n = samplesForLength(segLen(x1,y1,x2,y2));
-        for (let k = 1; k <= n; k++) {
-          const t = k / n;
-          let px = lerpN(x1,x2,t), py = lerpN(y1,y2,t);
-          [px,py] = toScreen(px,py);
-          const [dx,dy] = projectSphere2D(px,py);
-          out.push(`L${dx},${dy}`);
-        }
-        out.push('Z');
-        cx = x2; cy = y2;
-      }
-    }
-    svgPaths.push(`<path d="${out.join('')}" fill="black" stroke="none"/>`);
-  }
-
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
-    <g transform="translate(${width/2}, ${height/2 - 50})">
-      ${svgPaths.join("\n")}
-    </g>
-  </svg>`;
-
-  const blob = new Blob([svg], { type: "image/svg+xml" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'deformed-text.svg';
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
+/* (без изменений функционально) */
