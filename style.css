@@ -16,23 +16,24 @@
   
   html, body{ height:100%; margin:0; }
   body{
-    font-family:"Circe Bold",system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
-    font-weight:700; font-size:20px; line-height:1; color:#000; background:#fff;
-    overflow:hidden;
-  }
+  font-family:"Circe Bold",system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+  font-weight:700; font-size:20px; line-height:1; color:#000;
+  background:#f0f0f0;   /* <<< серый фон страницы */
+  overflow:hidden;
+}
   button, input, textarea, select{ font:inherit; }
   
   /* панель и карточка со скроллом */
   .panel{ position:fixed; left:var(--panel-x); top:var(--panel-y); width:var(--panel-w); z-index:10; }
   .card{
-  /* как и было — формула сама гарантирует, что кнопка не уедет за низ */
-  max-height: calc(100vh - var(--panel-y)*2 - var(--cta-h) - var(--cta-gap));
-  overflow: auto;
-  /* остальное без изменений */
+  background:#fff;                  /* <<< всегда белая */
+  border-radius:20px;
+  padding:32px;                     /* <<< поля 32px */
+  box-shadow:0 0 0 1px rgba(0,0,0,.06) inset;
+  overflow:visible;                 /* <<< скролл внутри не нужен */
 }
-  .card::-webkit-scrollbar{ width:6px; }
-  .card::-webkit-scrollbar-thumb{ background:rgba(0,0,0,.12); border-radius:6px; }
-  .card:hover::-webkit-scrollbar-thumb{ background:rgba(0,0,0,.2); }
+/* внутрь карточки добавим слой, который масштабируем */
+.card__inner{ transform-origin:top left; }
   
   /* бренд */
   .brand{ position:relative; height:140px; margin-bottom:32px; }
@@ -171,7 +172,7 @@
   
   /* CTA */
   .cta{ display:block; width:var(--panel-w); height:var(--cta-h); background:#000; color:#fff; border:0; border-radius:20px; cursor:pointer; }
-  .cta--outside{ margin-top:var(--cta-gap); }
+  .cta--outside{ margin-top: var(--cta-gap); }
   
   /* хинты не показываем */
   .hint{ display:none; }
