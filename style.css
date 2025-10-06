@@ -1,4 +1,4 @@
-/* === Circe Bold === */
+
 @font-face{
   font-family: "Circe Bold";
   src: local("Circe Bold"), url("./Circe-Bold.otf") format("opentype");
@@ -8,23 +8,23 @@
 :root{
   --panel-x: 32px;
   --panel-y: 32px;
-  --panel-w: 365px;      /* фикс ширины панели */
-  --panel-scale: 1;      /* будет менять JS */
+  --panel-w: 365px;      
+  --panel-scale: 1;      
   --gap: 32px;
   --cta-h: 60px;
-  --cta-gap: 0px;        /* панели и кнопке быть «впритык» */
+  --cta-gap: 0px;        
 }
 
 html, body{ height:100%; margin:0; }
 body{
   font-family:"Circe Bold",system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
   font-weight:700; font-size:20px; line-height:1; color:#000;
-  background:#f0f0f0;      /* серый фон по макету */
-  overflow:hidden;         /* без внешних скроллов */
+  background:#f0f0f0;      
+  overflow:hidden;        
 }
 button, input, textarea, select{ font:inherit; }
 
-/* панель и карточка */
+
 .panel{
   position:fixed; left:var(--panel-x); top:var(--panel-y);
   width:var(--panel-w); z-index:10;
@@ -32,7 +32,7 @@ button, input, textarea, select{ font:inherit; }
   transform-origin: top left;
 }
 .card{
-  background:#fff;        /* всегда белая */
+  background:#fff;        
   border-radius: 20px;
   padding: 32px;
   box-shadow: 0 0 0 1px rgba(0,0,0,.06) inset;
@@ -41,18 +41,18 @@ button, input, textarea, select{ font:inherit; }
 .brand{ position:relative; height:140px; margin-bottom:32px; }
 .brand__svg{ position:absolute; inset:0; width:100%; height:100%; object-fit:contain; }
 
-/* секции и заголовки */
+
 .section{ margin-bottom:24px; }
 .section:last-child{ margin-bottom:0; }
 .section__title{ margin:0 0 16px; }
 .section__subtitle{ font-size:18px; margin:0 0 12px; }
 
-/* эффекты */
+
 .pills{ display:flex; flex-wrap:wrap; gap:8px; }
 .pill{ border:0; border-radius:40px; padding:10px 30px; background:rgba(0,0,0,.06); cursor:pointer; }
 .pill.is-active{ background:#000; color:#fff; }
 
-/* ===== Слайдер-капсула (40px) ===== */
+
 .range-wrap{
   position:relative; height:40px; border-radius:20px;
   background:#efefef; overflow:hidden; --range-fill:50%;
@@ -75,7 +75,7 @@ button, input, textarea, select{ font:inherit; }
 .range-wrap > input[type=range]::-moz-range-thumb{ width:0; height:0; border:0; background:transparent; }
 .range-wrap > input[type=range]::-ms-track{ height:0; background:transparent; border:0; color:transparent; }
 
-/* ===== Тумблер OFF/ON (40px) ===== */
+
 .toggle{ position:relative; display:block; width:100%; height:40px; }
 .toggle input{ position:absolute; inset:0; opacity:0; z-index:3; cursor:pointer; }
 .toggle__rail{ position:absolute; inset:0; background:#efefef; border-radius:999px; overflow:hidden; }
@@ -88,21 +88,21 @@ button, input, textarea, select{ font:inherit; }
 .toggle__half{
   position:absolute; top:0; width:50%; height:100%;
   display:flex; align-items:center; justify-content:center; z-index:2; user-select:none; pointer-events:none;
-  font-size:14px;           /* просили 14 */
+  font-size:14px;           
 }
 .toggle__half--off{ left:0;  color:#fff; }
 .toggle__half--on { right:0; color:rgba(0,0,0,.35); }
 .toggle input:checked + .toggle__rail .toggle__half--off{ color:rgba(0,0,0,.35); }
 .toggle input:checked + .toggle__rail .toggle__half--on { color:#fff; }
 
-/* textarea */
+
 .textarea{ background:rgba(0,0,0,.06); border-radius:10px; padding:10px; }
 .textarea textarea{ width:100%; background:transparent; border:0; outline:none; resize:vertical; font-size:20px; }
 
-/* === Нижняя панель === */
+
 .textbar{ display:flex; gap:8px; align-items:center; }
 
-/* Интерлиньяж — 82×40 */
+
 .textbar__group{
   display:flex; gap:8px; align-items:center;
   background:rgba(0,0,0,.06);
@@ -124,7 +124,7 @@ button, input, textarea, select{ font:inherit; }
   border-radius:0; color:#000; caret-color:#000;
 }
 
-/* Капс — 56.5×40 */
+
 #caps{
   width:56.5px; height:40px; border-radius:10px;
   display:flex; align-items:center; justify-content:center;
@@ -132,7 +132,7 @@ button, input, textarea, select{ font:inherit; }
 }
 #caps.btn--active{ background:#000; color:#fff; }
 
-/* Выключка (3-позиционный переключатель) */
+
 .align{
   position:relative; width:146.5px; height:40px; border-radius:10px;
   background:#efefef; display:grid; grid-template-columns:repeat(3,1fr);
@@ -153,14 +153,14 @@ button, input, textarea, select{ font:inherit; }
   opacity:1; filter:invert(1);
 }
 
-/* CTA (впритык к карточке) */
+
 .cta{ display:block; width:var(--panel-w); height: var(--cta-h); background:#000; color:#fff; border:0; border-radius:20px; cursor:pointer; }
 .cta--outside{ margin-top: var(--cta-gap); }
 
-/* скрывашки */
+
 .hidden{ display:none !important; }
 
-/* канвас справа — учитываем масштаб панели */
+
 canvas{
   position:fixed;
   left: calc(var(--panel-x) + var(--panel-w) * var(--panel-scale) + var(--gap));
