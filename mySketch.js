@@ -1,5 +1,4 @@
 let cnv; 
-/* ====== ФОНТЫ/ПАРАМЕТРЫ ====== */
 let font, otFont;
 
 let bend = 50, bend2 = -80, effectScale = 1.0;
@@ -18,24 +17,22 @@ const SPHERE_R_MIN = 0.55, SPHERE_R_MAX = 1.80;
 const MAX_DISTORTION  = { Flag:75, Arc:140, Fish:45, Sphere:60, Rise:100 };
 const MAX_DISTORTION2 = { Rise:100 };
 
-let lineHeightFactor = 1.2;         // 120%
-let textAlignMode = 'center';       // 'left' | 'center' | 'right'
+let lineHeightFactor = 1.2;        
+let textAlignMode = 'center';      
 
-/* единый тумблер */
 let isCaps = false, orbitEnabled = false, dragEnabled = false;
 
 let isDraggingEffect = false, dragStartY = 0, bendStart = 0;
 let lastMouseX = 0, lastMouseY = 0, rotX = 0, rotY = 0;
 
-/* ====== helpers (css vars, панель/канвас) ====== */
 function layoutCanvas(){
   const cs = getComputedStyle(document.documentElement);
   const panelX = parseInt(cs.getPropertyValue('--panel-x')) || 32;
   const panelW = parseInt(cs.getPropertyValue('--panel-w')) || 365;
   const gap    = parseInt(cs.getPropertyValue('--gap'))     || 32;
 
-  const stageLeft  = panelX + panelW + gap;                 // где начинается «сцена»
-  const rightGutter = panelX;                                // симметричный отступ справа (можешь поменять)
+  const stageLeft  = panelX + panelW + gap;                
+  const rightGutter = panelX;                               
   const stageWidth = Math.max(320, windowWidth - stageLeft - rightGutter);
 
   if (cnv) resizeCanvas(stageWidth, windowHeight);
@@ -62,18 +59,13 @@ function setCanvasLeftByPanel(){
   }
 }
 
-/** Масштабируем левую панель так, чтобы между верхом/низом были одинаковые отступы, 
- *  причём ширина визуально НЕ «прыгает» между эффектами.
- *  Для расчёта высоты берём «максимальную» конфигурацию — с дополнительным слайдером. */
 function fitPanelToViewport(){
   const panel = document.querySelector('.panel');
   if (!panel) return;
 
-  // 1) временно убираем scale, чтобы измерить «натуральную» высоту
   const prevTransform = panel.style.transform;
   panel.style.transform = 'none';
 
-  // 2) показываем оба доп. слайдера "логически", но невидимо — чтобы замерить максимум
   const ghostOn = (el)=>{
     if (!el) return null;
     const wasHidden = el.classList.contains('hidden');
@@ -85,14 +77,11 @@ function fitPanelToViewport(){
   const undo1 = ghostOn(document.querySelector('#distortion2-wrap'));
   const undo2 = ghostOn(document.querySelector('#size-wrap'));
 
-  // 3) собственно замер
   const naturalH = panel.getBoundingClientRect().height;
 
-  // 4) откаты временных правок
   undo1 && undo1(); undo2 && undo2();
   panel.style.transform = prevTransform;
 
-  // 5) считаем масштаб
   const padY = css.getNum('--panel-y') || 32;
   const avail = window.innerHeight - padY*2;
   const s = Math.min(1, avail / naturalH);
@@ -101,11 +90,9 @@ function fitPanelToViewport(){
   panel.style.transform = `scale(${s})`;
   css.set('--panel-scale', s);
 
-  // 6) обновляем позицию канваса
   setCanvasLeftByPanel();
 }
 
-/* ====== preload / setup ====== */
 function preload(){
   font = loadFont('TT Foxford.ttf');
   opentype.load('TT Foxford.ttf', (err, f)=>{ if(!err) otFont = f; });
@@ -129,14 +116,12 @@ function setup(){
   updateBendLabel();
   updateRangeDecor(UI.r1);
 
-  // первой же отрисовкой выставим фон и геометрию
   fitPanelToViewport();
   setCanvasLeftByPanel();
 }
 function windowResized(){ layoutCanvas(); }
 
 
-/* ====== UI ====== */
 const UI = {};
 const el = q => document.querySelector(q);
 
@@ -144,25 +129,22 @@ function bindUI(){
   UI.effectBtns = [...document.querySelectorAll('#effect-group .pill')];
   UI.r1   = el('#distortion');
   UI.r2   = el('#distortion2');
-  UI.r2w  = el('#distortion2-wrap');     // теперь под заголовком "Сила искажения"
+  UI.r2w  = el('#distortion2-wrap');     
   UI.size = el('#effect-scale');
-  UI.sizew= el('#size-wrap');     // тоже под тем же заголовком
+  UI.sizew= el('#size-wrap');    
 
   UI.text = el('#text');
   UI.caps = el('#caps');
 
-  // интерлиньяж
   UI.leadingIcon = el('#leading-icon');
   UI.leadingEdit = el('#leading-edit');
 
-  // выключка
   UI.align = el('#align');
   UI.alignBtns = [...document.querySelectorAll('#align .align__btn')];
 
   UI.manual = el('#manual-toggle');
   UI.exportBtn = el('#export');
 
-  // эффекты
   UI.effectBtns.forEach(b=>{
     b.addEventListener('click', ()=>{
       UI.effectBtns.forEach(x=>x.classList.remove('is-active'));
@@ -176,13 +158,10 @@ function bindUI(){
       applyManualToggleBehavior();
       updateBendLabel(); updateRangeDecor(UI.r1);
 
-      // смена набора контролов не должна «подпрыгивать» ширину — масштаб не меняем,
-      // но позицию канваса обновим на всякий
       setCanvasLeftByPanel();
     });
   });
 
-  // слайдер "Сила искажения"
   UI.r1.addEventListener('input', ()=>{
     bend = +UI.r1.value;
     updateBendLabel(); updateRangeDecor(UI.r1);
@@ -192,7 +171,6 @@ function bindUI(){
   attachRangeDragBehavior(UI.r1);
   attachRangeDragBehavior(UI.r2);
 
-  // вторые диапазоны (под первым)
   UI.r2?.addEventListener('input', ()=>{
    bend2 = +UI.r2.value;
    updateBendLabel();
@@ -204,16 +182,14 @@ function bindUI(){
    updateRangeDecor(UI.size);
  });
 
-  // текст/капс
   UI.text.addEventListener('input', onTextInput);
   UI.caps.addEventListener('click', ()=>{
     isCaps = !isCaps;
     refreshCapsButton();
     createTextTexture(getCurrentText());
   });
-  refreshCapsButton(); // начальная надпись и заливка
+  refreshCapsButton(); 
 
-  // ==== Интерлиньяж: ввод и drag по иконке ====
   UI.leadingEdit.value = formatLeadingPct(lineHeightFactor);
   UI.leadingEdit.addEventListener('input', onLeadingEdit);
   UI.leadingEdit.addEventListener('blur',  ()=> UI.leadingEdit.value = formatLeadingPct(lineHeightFactor));
@@ -230,7 +206,6 @@ function bindUI(){
   UI.leadingIcon?.addEventListener('dragstart', e => e.preventDefault());
   attachLeadingDrag();
 
-  // выключка (лево/центр/право)
   UI.alignBtns.forEach(btn=>{
     btn.addEventListener('click', ()=>{
       textAlignMode = btn.dataset.align;
@@ -239,20 +214,16 @@ function bindUI(){
     });
   });
 
-  // тумблер
   UI.manual.addEventListener('change', applyManualToggleBehavior);
 
-  // экспорт
   UI.exportBtn.addEventListener('click', exportDeformedSVG);
 
-  // старт
   UI.r1.value = bend; UI.r2.value = bend2; UI.size.value = effectScale;
   updateRangeDecor(UI.r1);
   updateRangeDecor(UI.r2);
   updateRangeDecor(UI.size);
 
 
-  // пересчёт масштаба панели при первом рендере шрифтов/иконок
   setTimeout(fitPanelToViewport, 0);
 }
 
@@ -261,7 +232,6 @@ function refreshCapsButton(){
   UI.caps.classList.toggle('btn--active', isCaps);
 }
 
-/* ——— кастомный range: отключение анимации заполнения при drag ——— */
 function attachRangeDragBehavior(rangeEl){
   if (!rangeEl) return;
   const wrap = rangeEl.closest('.range-wrap'); if (!wrap) return;
@@ -283,7 +253,6 @@ function updateRangeDecor(rangeEl){
   wrap.style.setProperty('--range-fill', `${pct}%`);
 }
 
-/* ——— интерлиньяж как в Фигме ——— */
 const LEADING_MIN = 80, LEADING_MAX = 200; // %, 0.8–2.0
 function clampLeading(p){ return Math.max(LEADING_MIN, Math.min(LEADING_MAX, p)); }
 function getLeadingPercent(){ return Math.round(lineHeightFactor * 100); }
@@ -341,14 +310,12 @@ function syncBendSlidersToLimits(){
    UI.r2.value = bend2;
    updateRangeDecor(UI.r2);
  }
- updateRangeDecor(UI.size); // размер эффекта не меняем, но подсветку синхронизируем
+ updateRangeDecor(UI.size); 
 }
 function toggleSecondSliderUI(){ 
-  // показываем второй «силы искажения» только для Rise
   UI.r2w?.classList.toggle('hidden', currentMode !== 'Rise'); 
 }
 function toggleSizeSliderUI(){ 
-  // показываем «Размер эффекта» только для Fish
   UI.sizew?.classList.toggle('hidden', currentMode !== 'Fish'); 
 }
 
@@ -366,7 +333,6 @@ function updateBendLabel(){
   console.log('[manual]', `Drag:${dragEnabled?'ON':'OFF'} / Orbit:${orbitEnabled?'ON':'OFF'}`);
 }
 
-/* ====== РЕНДЕР ====== */
 function createTextTexture(str){
   let tsBase=150, ts=tsBase*scale, pad=ts*1, lines=str.split('\n'), maxTextureSize=16384;
   let g=createGraphics(10,10); g.textFont(font);
@@ -390,7 +356,6 @@ function easeInOutCubic(x){ return x<0.5 ? 4*x*x*x : 1 - pow(-2*x+2,3)/2; }
 function startAnimation(){ if(!getCurrentText().trim()) return; createTextTexture(getCurrentText()); animationProgress=0; isAnimating=true; }
 
 function draw(){
-  // фон страницы — #F0F0F0
   background(240);
 
   if (!isSphereMode() && dragEnabled && isDraggingEffect){
@@ -409,7 +374,6 @@ function draw(){
     const s     =css.getNum('--panel-scale')||1;
     const leftOffset = panelX + panelW*s + gap;
 
-    // вместо вычислений через panelX/panelW/gap:
     const max_w = width * 0.9; 
     let view_scale=1; if(display_w>max_w){ view_scale=max_w/display_w; display_w*=view_scale; display_h*=view_scale; }
 
@@ -473,7 +437,6 @@ function drawSphereMapped(display_w, display_h){
 }
 function spherePoint(r,a,b){ const ca=cos(a), sa=sin(a), cb=cos(b), sb=sin(b); return { x:r*sa*cb, y:r*sb, z:r*ca*cb }; }
 
-/* мышь: drag / orbit */
 function mousePressed(){
   lastMouseX=mouseX; lastMouseY=mouseY;
   if(!isSphereMode() && dragEnabled && mouseX>0 && mouseY>0 && mouseX<width && mouseY<height){
@@ -492,7 +455,6 @@ function mouseReleased(){ isDraggingEffect=false; }
 
 function onTextInput(){ createTextTexture(getCurrentText()); isAnimating=false; animationProgress=1.0; }
 
-/* ====== EXPORT SVG ====== */
 function exportDeformedSVG() {
   if (!otFont) { alert("Font not loaded!"); return; }
 
@@ -513,7 +475,6 @@ function exportDeformedSVG() {
   const svgW = maxAdvance + pad * 2;
   const svgH = lines.length * lineHeight + pad * 2;
 
-  // масштаб предпросмотра (как в draw)
   let display_w = textImg.width / scale;
   let display_h = textImg.height / scale;
 
@@ -582,7 +543,6 @@ function exportDeformedSVG() {
     return [x, newY];
   };
 
-  /* ---- Плоскость ---- */
   if (!isSphereMode()) {
     let svgPaths = [];
     for (let li = 0; li < lines.length; li++) {
@@ -693,7 +653,6 @@ function exportDeformedSVG() {
     return;
   }
 
-  /* ---- Сфера ---- */
   const limit = getCurrentLimit();
   const wrap = constrain(Math.abs(bend) / limit, 0, 1);
   const baseR = Math.min(display_w, display_h) * 0.5;
