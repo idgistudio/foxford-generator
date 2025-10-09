@@ -8,7 +8,7 @@ let isAnimating = false;
 
 let animationProgress = 1;
 const ANIMATION_SPEED = 0.010, ANIMATION_STAGGER = 0.6;
-let segments = 10000, scale = 4;
+let segments = 10000, scale = 2;
 
 const SPHERE_COLS = 160, SPHERE_ROWS = 120;
 const SPHERE_SPAN_X = Math.PI * 0.90, SPHERE_SPAN_Y = Math.PI * 0.70;
@@ -16,6 +16,8 @@ const SPHERE_R_MIN = 0.55, SPHERE_R_MAX = 1.80;
 
 const MAX_DISTORTION  = { Flag:75, Arc:140, Fish:45, Sphere:60, Rise:100 };
 const MAX_DISTORTION2 = { Rise:100 };
+
+let GPU_MAX_TEX = 8192;
 
 let lineHeightFactor = 1.2;        
 let textAlignMode = 'center';      
@@ -100,6 +102,18 @@ function preload(){
 function setup(){
   setAttributes('antialias', true);
   cnv = createCanvas(1, 1, WEBGL);
+  
+  try{
+    const gl = drawingContext;                 
+    const maxTex = gl?.getParameter(gl.MAX_TEXTURE_SIZE);
+    if (Number.isFinite(maxTex) && maxTex > 0) {
+      GPU_MAX_TEX = maxTex;
+    }
+    console.log('[GPU] MAX_TEXTURE_SIZE =', GPU_MAX_TEX);
+  }catch(e){
+    console.warn('[GPU] Cannot read MAX_TEXTURE_SIZE:', e);
+  }
+
   layoutCanvas();                   
   textureMode(NORMAL); noStroke();
   cnv.style('z-index','0');
@@ -334,24 +348,53 @@ function updateBendLabel(){
 }
 
 function createTextTexture(str){
-  let tsBase=150, ts=tsBase*scale, pad=ts*1, lines=str.split('\n'), maxTextureSize=16384;
-  let g=createGraphics(10,10); g.textFont(font);
-  for(let i=0;i<10;i++){
-    g.textSize(ts); let maxW=0; for(const L of lines) maxW=max(maxW,g.textWidth(L));
-    let wC=maxW+pad*2; if(wC<=maxTextureSize) break;
-    const s=(maxTextureSize-pad*2)/maxW; ts*=max(0.5,min(1.0,s*0.98)); pad=ts*1;
-  }
-  let maxW=0; g.textSize(ts); for(const L of lines) maxW=max(maxW,g.textWidth(L));
-  let w=min(maxW+pad*2,maxTextureSize), lineH=ts*lineHeightFactor, h=min(lines.length*lineH+pad*2,maxTextureSize);
+  let tsBase = 130, ts = tsBase * scale;
+  let pad = ts * 0.6;                         
+  let lines = str.split('\n');
+  const maxTextureSize = GPU_MAX_TEX;         
 
-  textImg=createGraphics(w,h); textImg.background(255,0); textImg.textFont(font); textImg.textSize(ts);
+  // прикидка и подгон размера под лимит текстуры
+  let g = createGraphics(10,10); 
+  g.textFont(font);
+
+  for (let i = 0; i < 32; i++) {              
+    g.textSize(ts);
+    let maxW = 0; 
+    for (const L of lines) maxW = max(maxW, g.textWidth(L) || 0);
+
+    const wCandidate = maxW + pad * 2;
+    if (wCandidate <= maxTextureSize) break;
+
+    const s = (maxTextureSize - pad*2) / Math.max(1, maxW);
+    ts *= Math.max(0.5, Math.min(1.0, s * 0.98));
+    pad = ts * 0.6;
+  }
+
+  g.textSize(ts);
+  let maxW = 0; 
+  for (const L of lines) maxW = max(maxW, g.textWidth(L) || 0);
+
+  const w = Math.min(maxW + pad*2, maxTextureSize);
+  const lineH = ts * lineHeightFactor;
+  const h = Math.min(lines.length * lineH + pad*2, maxTextureSize);
+
+  textImg = createGraphics(w, h);
+  textImg.background(255, 0);
+  textImg.textFont(font);
+  textImg.textSize(ts);
+
   let x;
-  if (textAlignMode==='left'){ textImg.textAlign(LEFT,TOP);  x = pad; }
-  else if (textAlignMode==='right'){ textImg.textAlign(RIGHT,TOP); x = w - pad; }
-  else { textImg.textAlign(CENTER,TOP); x = w/2; }
+  if (textAlignMode === 'left'){  textImg.textAlign(LEFT,  TOP); x = pad;       }
+  else if (textAlignMode === 'right'){ textImg.textAlign(RIGHT, TOP); x = w-pad; }
+  else { textImg.textAlign(CENTER, TOP); x = w/2; }
+
   textImg.fill(0);
-  for(let i=0;i<lines.length;i++){ let yTop=pad+i*lineH; textImg.text(lines[i], x, yTop); }
+  for (let i = 0; i < lines.length; i++){
+    const yTop = pad + i * lineH;
+    textImg.text(lines[i], x, yTop);
+  }
 }
+
 function easeInOutCubic(x){ return x<0.5 ? 4*x*x*x : 1 - pow(-2*x+2,3)/2; }
 function startAnimation(){ if(!getCurrentText().trim()) return; createTextTexture(getCurrentText()); animationProgress=0; isAnimating=true; }
 
